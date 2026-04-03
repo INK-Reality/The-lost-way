@@ -9,377 +9,379 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: "Microsoft YaHei", system-ui, sans-serif;
+            font-family: "Microsoft YaHei", sans-serif;
         }
         body {
-            background: #0a0d14;
-            color: #e6e6e6;
+            background: #0b0f17;
+            color: #eaeaea;
             min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: center;
             padding: 20px;
         }
         .container {
             width: 100%;
-            max-width: 720px;
-            background: #141a26;
+            max-width: 800px;
+            background: #161d2b;
             border-radius: 16px;
-            padding: 32px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-            border: 1px solid #2d3748;
+            padding: 28px;
+            box-shadow: 0 0 30px #000;
+            border: 1px solid #323f57;
         }
         .title {
             text-align: center;
-            font-size: 32px;
-            color: #f6e05e;
-            margin-bottom: 24px;
-            text-shadow: 0 0 12px rgba(246,224,94,0.3);
-        }
-        .input-group {
-            margin-bottom: 16px;
+            font-size: 28px;
+            color: #f5d042;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #f5d04266;
         }
         input {
             width: 100%;
-            padding: 14px 16px;
+            padding: 12px;
+            margin: 8px 0;
             border-radius: 8px;
-            border: 1px solid #374151;
-            background: #1f2937;
-            color: #f9fafb;
+            border: 1px solid #444;
+            background: #212938;
+            color: white;
             font-size: 16px;
             outline: none;
-            transition: border 0.2s;
-        }
-        input:focus {
-            border-color: #f6e05e;
-        }
-        .btn-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 16px;
         }
         button {
-            padding: 14px;
+            padding: 12px;
             border-radius: 8px;
             border: none;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
             cursor: pointer;
-            transition: all 0.2s;
+            margin: 4px;
         }
-        .btn-primary {
-            background: #f6e05e;
-            color: #111827;
-        }
-        .btn-primary:hover {
-            background: #fcd34d;
-            transform: translateY(-2px);
-        }
-        .btn-danger {
-            background: #ef4444;
-            color: white;
-        }
-        .btn-danger:hover {
-            background: #dc2626;
-            transform: translateY(-2px);
-        }
-        .status {
-            text-align: center;
-            color: #f6e05e;
-            font-size: 14px;
-            margin-top: 8px;
-        }
-        .player-list {
-            margin: 20px 0;
-        }
+        .btn-y { background: #f5d042; color: #111; }
+        .btn-r { background: #e54a4a; color: white; }
+        .btn-g { background: #3ba55d; color: white; }
+        .btn-w { background: #374151; color: white; }
+        .btn-block { width: 100%; margin: 6px 0; }
         .player-item {
-            background: #1f2937;
-            padding: 12px 16px;
+            background: #242c3d;
+            padding: 12px;
             border-radius: 8px;
-            margin-bottom: 8px;
+            margin: 8px 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        .ready-tag {
-            color: #10b981;
-            font-weight: bold;
-        }
-        .unready-tag {
-            color: #f59e0b;
-            font-weight: bold;
-        }
-        .battle-ui {
-            display: none;
-        }
-        .battle-player {
-            background: #1f2937;
-            padding: 16px;
-            border-radius: 8px;
-            margin-bottom: 12px;
-        }
         .hp-bar {
-            width: 100%;
-            height: 12px;
-            background: #374151;
-            border-radius: 6px;
-            overflow: hidden;
-            margin-top: 8px;
+            width: 100%; height: 8px; background: #374151; border-radius: 4px; margin-top: 6px;
         }
-        .hp-fill {
-            height: 100%;
-            background: #ef4444;
-            transition: width 0.3s;
+        .hp-fill { height: 100%; background: #e54a4a; }
+        .energy-bar {
+            width: 100%; height: 6px; background: #374151; border-radius: 3px; margin-top: 4px;
         }
+        .energy-fill { height: 100%; background: #3b82f6; }
+        .action-row {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .target-select {
+            margin: 12px 0;
+            padding: 12px;
+            background: #1f2937;
+            border-radius: 8px;
+        }
+        .log {
+            background: #111827;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.5;
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 16px 0;
+            color: #d1d5db;
+        }
+        .done { color: #10b981; font-weight: bold; }
+        .waiting { color: #f59e0b; }
+        .dead { color: #ef4444; text-decoration: line-through; }
+        .winner { color: #f5d042; font-size: 22px; font-weight: bold; text-align: center; margin: 20px 0; }
     </style>
 </head>
 <body>
-    <!-- 登录页 -->
-    <div class="container" id="loginPage">
-        <h1 class="title">晖纹竞技场</h1>
-        <div class="input-group">
-            <input type="text" id="nickname" placeholder="输入你的游戏昵称（必填）">
-        </div>
-        <div class="input-group">
-            <input type="text" id="roomId" placeholder="房间号（创建房间自动生成）">
-        </div>
-        <div class="btn-group">
-            <button class="btn-primary" onclick="createRoom()">创建房间</button>
-            <button class="btn-primary" onclick="joinRoom()">加入房间</button>
-        </div>
-        <div class="status" id="loginStatus">等待操作...</div>
+
+<div class="container" id="loginPage">
+    <div class="title">晖纹竞技场</div>
+    <input id="nick" placeholder="输入昵称">
+    <input id="roomId" placeholder="房间号（加入填写）">
+    <button class="btn-block btn-y" onclick="createRoom()">创建房间</button>
+    <button class="btn-block btn-y" onclick="joinRoom()">加入房间</button>
+    <div id="status" style="text-align:center; margin-top:10px; color:#f5d042;"></div>
+</div>
+
+<div class="container" id="roomPage" style="display:none;">
+    <div class="title">房间：<span id="showRoom"></span></div>
+    <div id="playerList"></div>
+    <button class="btn-block btn-g" id="readyBtn" onclick="ready()">准备/取消</button>
+    <button class="btn-block btn-r" id="startBtn" style="display:none;" onclick="startGame()">开始游戏</button>
+</div>
+
+<div class="container" id="battlePage" style="display:none;">
+    <div class="title">战斗中</div>
+    <div id="battlePlayers"></div>
+    <div class="action-row" id="actionPanel" style="display:none;">
+        <button class="btn-r" onclick="chooseAttack()">攻击</button>
+        <button class="btn-w" onclick="chooseDefend()">防御</button>
+        <button class="btn-g" onclick="chooseSkip()">跳过</button>
+    </button>
     </div>
-
-    <!-- 房间等待页 -->
-    <div class="container" id="roomPage" style="display: none;">
-        <h1 class="title">房间号：<span id="currentRoomId"></span></h1>
-        <div class="player-list" id="playerList"></div>
-        <div class="btn-group">
-            <button class="btn-primary" id="readyBtn" onclick="toggleReady()">准备/取消准备</button>
-            <button class="btn-danger" id="startBtn" style="display: none;" onclick="startGame()">开始游戏（房主）</button>
-        </div>
-        <div class="status" id="roomStatus">等待玩家加入...</div>
+    <div id="targetPanel" class="target-select" style="display:none;">
+        <div>选择目标：</div>
+        <div id="targetList"></div>
     </div>
+    <div class="log" id="battleLog"></div>
+    <div id="winner" class="winner" style="display:none;"></div>
+</div>
 
-    <!-- 战斗页 -->
-    <div class="container battle-ui" id="battlePage">
-        <h1 class="title">战斗中</h1>
-        <div id="battlePlayerList"></div>
-        <div class="status">回合制战斗系统开发中...</div>
-    </div>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script>
+let peer, myId, roomId, isHost = false, myNick;
+let conns = [];
+let players = [];
+let readyMap = {};
+let actions = {};
+let phase = "login"; // login, room, battle, round, resolve, end
 
-    <!-- PeerJS 核心 -->
-    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <script>
-        // 全局状态
-        let myPeer = null;
-        let myId = null;
-        let roomId = null;
-        let isHost = false;
-        let myNick = "";
-        let isReady = false;
-        let connections = [];
-        let players = []; // { id, nick, ready, hp:80, atk:5, def:5 }
+function $(id) { return document.getElementById(id); }
 
-        // DOM 元素
-        const loginPage = document.getElementById('loginPage');
-        const roomPage = document.getElementById('roomPage');
-        const battlePage = document.getElementById('battlePage');
-        const currentRoomIdEl = document.getElementById('currentRoomId');
-        const playerListEl = document.getElementById('playerList');
-        const battlePlayerListEl = document.getElementById('battlePlayerList');
-        const startBtn = document.getElementById('startBtn');
-        const loginStatusEl = document.getElementById('loginStatus');
-        const roomStatusEl = document.getElementById('roomStatus');
+function initPeer() {
+    peer = new Peer();
+    peer.on('open', id => { myId = id; });
+    peer.on('connection', conn => {
+        conns.push(conn);
+        conn.on('data', d => recv(d, conn));
+    });
+}
 
-        // 初始化 Peer
-        function initPeer() {
-            myPeer = new Peer();
-            myPeer.on('open', (id) => {
-                myId = id;
-                loginStatusEl.textContent = "联机服务已就绪，可以创建/加入房间";
-            });
-            myPeer.on('connection', (conn) => {
-                handleConnection(conn);
-            });
-            myPeer.on('error', (err) => {
-                console.error(err);
-                loginStatusEl.textContent = "联机服务异常：" + err.type;
-            });
+function sendAll(data) { conns.forEach(c => c.send(data)); }
+
+function recv(data, conn) {
+    switch(data.t) {
+        case 'join':
+            players.push(data.p);
+            readyMap[data.p.id] = false;
+            syncPlayers(); break;
+        case 'ready':
+            readyMap[data.id] = data.v;
+            syncPlayers(); break;
+        case 'start':
+            startBattle(); break;
+        case 'act':
+            actions[data.id] = data.a;
+            syncActions(); break;
+        case 'sync':
+            players = data.players;
+            actions = data.actions;
+            syncBattle(); break;
+        case 'resolve':
+            players = data.players;
+            phase = 'resolve';
+            syncBattle();
+            setTimeout(nextRound, 2500); break;
+        case 'win':
+            showWinner(data.w); break;
+    }
+}
+
+function createRoom() {
+    myNick = $('nick').value.trim();
+    if (!myNick) return alert('输入昵称');
+    isHost = true;
+    roomId = myId;
+    players.push({ id: myId, nick: myNick, hp:50, atk:8, df:5, en:0, maxEn:5, dead:false, act:null, tar:null });
+    readyMap[myId] = false;
+    enterRoom();
+}
+
+function joinRoom() {
+    myNick = $('nick').value.trim();
+    roomId = $('roomId').value.trim();
+    if (!myNick || !roomId) return alert('昵称+房间号');
+    let conn = peer.connect(roomId);
+    conn.on('open', () => {
+        conns.push(conn);
+        conn.on('data', d => recv(d, conn));
+        let p = { id: myId, nick: myNick, hp:50, atk:8, df:5, en:0, maxEn:5, dead:false, act:null, tar:null };
+        players.push(p);
+        conn.send({t:'join', p:p});
+        enterRoom();
+    });
+}
+
+function enterRoom() {
+    $('loginPage').style.display='none'; $('roomPage').style.display='block';
+    $('showRoom').innerText = roomId;
+    if (isHost) $('startBtn').style.display='block';
+    syncPlayers();
+}
+
+function ready() {
+    readyMap[myId] = !readyMap[myId];
+    sendAll({t:'ready', id:myId, v:readyMap[myId]});
+    syncPlayers();
+}
+
+function startGame() {
+    if (!isHost) return;
+    sendAll({t:'start'});
+    startBattle();
+}
+
+function startBattle() {
+    phase = 'round';
+    $('roomPage').style.display='none'; $('battlePage').style.display='block';
+    syncBattle();
+}
+
+function syncPlayers() {
+    let html = '';
+    players.forEach(p => {
+        let r = readyMap[p.id] ? '✅ 已准备' : '⌛ 未准备';
+        html += `<div class="player-item"><span>${p.nick}</span><span>${r}</span></div>`;
+    });
+    $('playerList').innerHTML = html;
+}
+
+function syncBattle() {
+    let html = '';
+    players.forEach(p => {
+        let cls = p.dead ? 'dead' : (p.act ? 'done' : 'waiting');
+        let actTxt = p.act ? {a:'攻击',d:'防御',s:'跳过'}[p.act] : '等待';
+        if (p.dead) actTxt = '已阵亡';
+        html += `
+        <div class="player-item ${cls}">
+            <div>
+                <b>${p.nick}</b>
+                <div class="hp-bar"><div class="hp-fill" style="width:${p.hp/50*100}%"></div></div>
+                <div style="font-size:12px;">HP:${p.hp} ATK:${p.atk} DF:${p.df} EN:${p.en}/${p.maxEn}</div>
+            </div>
+            <div>${actTxt}</div>
+        </div>`;
+    });
+    $('battlePlayers').innerHTML = html;
+    if (phase === 'round' && !me().dead && !me().act) {
+        $('actionPanel').style.display = 'flex';
+    } else {
+        $('actionPanel').style.display = 'none';
+    }
+    checkWinner();
+}
+
+function syncActions() {
+    players.forEach(p => p.act = actions[p.id]?.a || null);
+    syncBattle();
+    if (isHost) checkAllDone();
+}
+
+function me() { return players.find(x=>x.id===myId); }
+
+function chooseAttack() {
+    $('actionPanel').style.display='none';
+    $('targetPanel').style.display='block';
+    let alive = players.filter(p=>!p.dead && p.id!==myId);
+    $('targetList').innerHTML = alive.map(p=>`
+        <button class="btn-block btn-r" onclick="setTarget('${p.id}')">${p.nick}</button>
+    `).join('');
+}
+
+function chooseDefend() { sendAction('d', null); }
+function chooseSkip() { sendAction('s', null); }
+function setTarget(tid) { sendAction('a', tid); }
+
+function sendAction(a, tar) {
+    $('targetPanel').style.display='none';
+    let me = me();
+    me.act = a; me.tar = tar;
+    actions[myId] = {a, tar};
+    sendAll({t:'act', id:myId, a:{a,tar}});
+    if (isHost) sendAll({t:'sync', players, actions});
+    syncBattle();
+}
+
+function checkAllDone() {
+    let alive = players.filter(p=>!p.dead);
+    let done = alive.every(p=>actions[p.id]?.a);
+    if (done) resolveRound();
+}
+
+function resolveRound() {
+    phase = 'resolve';
+    let log = [];
+    let alive = players.filter(p=>!p.dead);
+
+    let damageMap = {};
+    alive.forEach(p => damageMap[p.id] = 0);
+
+    alive.forEach(p => {
+        let a = actions[p.id]?.a;
+        let t = actions[p.id]?.tar;
+        if (a === 'a' && t) {
+            damageMap[t] += p.atk;
         }
+    });
 
-        // 处理新连接
-        function handleConnection(conn) {
-            connections.push(conn);
-            conn.on('data', (data) => handleData(data, conn));
-            conn.on('close', () => {
-                connections = connections.filter(c => c !== conn);
-                players = players.filter(p => p.id !== conn.peer);
-                updatePlayerList();
-            });
-            // 发送自己的信息给新连接
-            conn.send({
-                type: 'playerInfo',
-                id: myId,
-                nick: myNick,
-                ready: isReady,
-                hp: 80,
-                atk: 5,
-                def: 5
-            });
+    alive.forEach(p => {
+        let a = actions[p.id]?.a;
+        if (a === 'd') {
+            let dmg = Math.max(0, damageMap[p.id] - p.df);
+            p.hp -= dmg;
+            log.push(`${p.nick} 防御，受到 ${dmg} 伤害`);
+        } else if (a === 's') {
+            p.en = Math.min(p.en+1, p.maxEn);
+            log.push(`${p.nick} 跳过，能量+1`);
+        } else {
+            let dmg = damageMap[p.id];
+            p.hp -= dmg;
+            log.push(`${p.nick} 受到 ${dmg} 点伤害`);
         }
-
-        // 处理收到的数据
-        function handleData(data, conn) {
-            switch(data.type) {
-                case 'playerInfo':
-                    const existing = players.find(p => p.id === data.id);
-                    if (existing) {
-                        Object.assign(existing, data);
-                    } else {
-                        players.push(data);
-                    }
-                    updatePlayerList();
-                    break;
-                case 'readyUpdate':
-                    const p = players.find(pl => pl.id === data.id);
-                    if (p) p.ready = data.ready;
-                    updatePlayerList();
-                    break;
-                case 'startGame':
-                    roomPage.style.display = 'none';
-                    battlePage.style.display = 'block';
-                    updateBattleUI();
-                    break;
-            }
+        if (p.hp <= 0) {
+            p.hp = 0; p.dead = true;
+            log.push(`${p.nick} 已阵亡！`);
         }
+    });
 
-        // 广播给所有连接
-        function broadcast(data) {
-            connections.forEach(conn => conn.send(data));
-        }
+    actions = {};
+    players.forEach(p => { p.act = null; p.tar = null; });
+    sendAll({t:'resolve', players});
+    showLog(log);
+    checkWinner();
+}
 
-        // 创建房间
-        function createRoom() {
-            myNick = document.getElementById('nickname').value.trim();
-            if (!myNick) {
-                alert("请输入昵称！");
-                return;
-            }
-            isHost = true;
-            roomId = myId; // 用 Peer ID 当房间号
-            currentRoomIdEl.textContent = roomId;
-            players.push({
-                id: myId,
-                nick: myNick,
-                ready: false,
-                hp: 80,
-                atk: 5,
-                def: 5
-            });
-            loginPage.style.display = 'none';
-            roomPage.style.display = 'block';
-            startBtn.style.display = 'block';
-            roomStatusEl.textContent = "等待其他玩家加入...";
-            updatePlayerList();
-        }
+function nextRound() {
+    phase = 'round';
+    actions = {};
+    players.forEach(p => { p.act = null; p.tar = null; });
+    sendAll({t:'sync', players, actions});
+    syncBattle();
+}
 
-        // 加入房间
-        function joinRoom() {
-            myNick = document.getElementById('nickname').value.trim();
-            roomId = document.getElementById('roomId').value.trim();
-            if (!myNick || !roomId) {
-                alert("请输入昵称和房间号！");
-                return;
-            }
-            const conn = myPeer.connect(roomId);
-            conn.on('open', () => {
-                handleConnection(conn);
-                // 发送自己的信息
-                conn.send({
-                    type: 'playerInfo',
-                    id: myId,
-                    nick: myNick,
-                    ready: false,
-                    hp: 80,
-                    atk: 5,
-                    def: 5
-                });
-                players.push({
-                    id: myId,
-                    nick: myNick,
-                    ready: false,
-                    hp: 80,
-                    atk: 5,
-                    def: 5
-                });
-                loginPage.style.display = 'none';
-                roomPage.style.display = 'block';
-                currentRoomIdEl.textContent = roomId;
-                roomStatusEl.textContent = "已加入房间，等待房主开始...";
-                updatePlayerList();
-            });
-            conn.on('error', (err) => {
-                alert("加入房间失败：" + err.message);
-            });
-        }
+function showLog(arr) {
+    $('battleLog').innerHTML = arr.join('<br>');
+}
 
-        // 切换准备状态
-        function toggleReady() {
-            isReady = !isReady;
-            const me = players.find(p => p.id === myId);
-            if (me) me.ready = isReady;
-            broadcast({
-                type: 'readyUpdate',
-                id: myId,
-                ready: isReady
-            });
-            updatePlayerList();
-        }
+function checkWinner() {
+    let alive = players.filter(p=>!p.dead);
+    if (alive.length === 1) {
+        let w = alive[0].nick;
+        if (isHost) sendAll({t:'win', w});
+        showWinner(w);
+    }
+}
 
-        // 开始游戏
-        function startGame() {
-            if (!isHost) return;
-            // 检查所有玩家是否准备
-            const allReady = players.every(p => p.ready);
-            if (!allReady) {
-                alert("还有玩家未准备！");
-                return;
-            }
-            broadcast({ type: 'startGame' });
-            roomPage.style.display = 'none';
-            battlePage.style.display = 'block';
-            updateBattleUI();
-        }
+function showWinner(w) {
+    phase = 'end';
+    $('winner').style.display='block';
+    $('winner').innerText = `🎉 ${w} 获得胜利！`;
+}
 
-        // 更新房间玩家列表
-        function updatePlayerList() {
-            playerListEl.innerHTML = players.map(p => `
-                <div class="player-item">
-                    <span>${p.nick}</span>
-                    <span class="${p.ready ? 'ready-tag' : 'unready-tag'}">${p.ready ? '✅ 已准备' : '⌛ 未准备'}</span>
-                </div>
-            `).join('');
-        }
-
-        // 更新战斗UI
-        function updateBattleUI() {
-            battlePlayerListEl.innerHTML = players.map(p => `
-                <div class="battle-player">
-                    <div style="display: flex; justify-content: space-between;">
-                        <span style="font-weight: bold; font-size: 18px;">${p.nick}</span>
-                        <span>血量: ${p.hp} | 攻击: ${p.atk} | 防御: ${p.def}</span>
-                    </div>
-                    <div class="hp-bar">
-                        <div class="hp-fill" style="width: ${p.hp / 80 * 100}%"></div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // 页面加载完成初始化
-        window.onload = initPeer;
-    </script>
+window.onload = initPeer;
+</script>
 </body>
 </html>
