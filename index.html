@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>晖纹竞技场 - 余晖1.0.6PVP</title>
+    <title>晖纹竞技场 - 弃路余晖</title>
     <style>
         * {
             margin: 0;
@@ -12,80 +12,66 @@
         }
 
         body {
-            background: #10141c;
-            color: #e6e6e6;
+            background: #0c0f16;
+            color: #e1e1e1;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            flex-direction: column;
             padding: 20px;
         }
 
         .container {
             width: 100%;
             max-width: 700px;
-            background: #1b2230;
-            border-radius: 16px;
-            padding: 30px;
-            box-shadow: 0 0 30px #000;
-            border: 1px solid #3a455a;
+            background: #171e2b;
+            border-radius: 14px;
+            padding: 28px;
+            box-shadow: 0 0 25px #000;
+            border: 1px solid #3b4a66;
         }
 
         .title {
             text-align: center;
-            font-size: 28px;
+            font-size: 26px;
             color: #f1c40f;
             margin-bottom: 20px;
-            text-shadow: 0 0 10px #f1c40f55;
-        }
-
-        .input-group {
-            margin: 12px 0;
         }
 
         input {
             width: 100%;
-            padding: 14px;
+            padding: 12px;
+            margin: 8px 0;
             border-radius: 8px;
-            border: none;
-            background: #252d3a;
-            color: white;
-            font-size: 16px;
-            outline: none;
             border: 1px solid #444;
+            background: #222b3b;
+            color: white;
+            font-size: 15px;
+            outline: none;
         }
 
         button {
             width: 100%;
-            padding: 14px;
+            padding: 12px;
+            margin: 6px 0;
             border-radius: 8px;
             border: none;
             background: #d4af37;
             color: #111;
             font-weight: bold;
-            font-size: 16px;
-            margin: 8px 0;
             cursor: pointer;
             transition: 0.2s;
         }
 
         button:hover {
-            background: #ffcc33;
+            background: #ffd95a;
         }
 
-        .room {
-            background: #222b38;
-            padding: 16px;
-            border-radius: 10px;
-            margin: 10px 0;
-        }
-
-        .player {
+        .player-item {
+            background: #252e3f;
             padding: 10px;
-            background: #2a3447;
-            margin: 6px 0;
             border-radius: 6px;
+            margin: 6px 0;
             display: flex;
             justify-content: space-between;
         }
@@ -95,105 +81,145 @@
             font-weight: bold;
         }
 
-        .battle-ui {
-            display: none;
-        }
-
-        .status {
+        .tip {
             text-align: center;
             color: #ffcc33;
             margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .battle-player {
+            background: #252e3f;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 8px 0;
         }
     </style>
 </head>
 <body>
-    <div class="container" id="loginPage">
+    <div class="container" id="page1">
         <div class="title">晖纹竞技场</div>
-        <div class="input-group">
-            <input type="text" id="nickname" placeholder="输入你的游戏昵称">
-        </div>
-        <div class="input-group">
-            <input type="text" id="roomId" placeholder="输入房间号（创建房间可不填）">
-        </div>
+        <input id="nick" placeholder="请输入你的昵称（必填）">
+        <input id="roomId" placeholder="房间号（加入填写，创建不用填）">
         <button onclick="createRoom()">创建房间（4人）</button>
         <button onclick="joinRoom()">加入房间</button>
-        <div class="status" id="tip"></div>
+        <div class="tip" id="msg"></div>
     </div>
 
-    <div class="container" id="roomPage" style="display:none;">
-        <div class="title">房间：<span id="showRoomId"></span></div>
-        <div id="playerList"></div>
-        <button id="readyBtn" onclick="ready()">准备 / 取消准备</button>
-        <button id="startBtn" onclick="startBattle()" style="display:none;">开始游戏（房主）</button>
+    <div class="container" id="page2" style="display:none;">
+        <div class="title">房间：<span id="showId"></span></div>
+        <div id="players"></div>
+        <button onclick="toggleReady()">准备 / 取消准备</button>
+        <button id="startBtn" style="display:none;background:#e74c3c;color:white;" onclick="startGame()">开始游戏（房主）</button>
     </div>
 
-    <div class="container battle-ui" id="battlePage">
+    <div class="container" id="page3" style="display:none;">
         <div class="title">战斗中</div>
-        <div id="battlePlayers"></div>
+        <div id="battleList"></div>
+        <div class="tip">游戏已开始，等待后续玩法扩展</div>
     </div>
 
     <script>
-        let playerName = "";
-        let roomId = "";
-        let isHost = false;
-        let players = [];
-        let readyList = {};
+        const firebaseConfig = {
+            apiKey: "AIzaSyD8ZJ9lQH0ZCJzZJQJQJQJQJQJQJQJQJQ",
+            authDomain: "local-fake.firebaseapp.com",
+            databaseURL: "https://local-fake-default-rtdb.firebaseio.com",
+            projectId: "local-fake",
+            storageBucket: "local-fake.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef123456"
+        };
 
-        // 模拟联机（可替换为真实后端）
-        function createRoom() {
-            playerName = document.getElementById("nickname").value;
-            if (!playerName) { alert("请输入昵称"); return; }
-            roomId = Math.floor(Math.random()*9000)+1000;
+        let nick = "";
+        let room = "";
+        let isHost = false;
+        let ready = false;
+        let db = null;
+
+        async function initDB() {
+            if (!window.firebase) {
+                showMsg("加载联机服务中...");
+                await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+                await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js');
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.database();
+            }
+        }
+
+        function showMsg(text) {
+            document.getElementById("msg").innerText = text;
+        }
+
+        async function createRoom() {
+            await initDB();
+            nick = document.getElementById("nick").value.trim();
+            if (!nick) { alert("请输入昵称"); return; }
+            room = Math.floor(1000 + Math.random()*9000).toString();
             isHost = true;
+            await db.ref("rooms/"+room+"/players/"+nick).set({
+                ready: false, hp:80, atk:5, def:5
+            });
             enterRoom();
         }
 
-        function joinRoom() {
-            playerName = document.getElementById("nickname").value;
-            roomId = document.getElementById("roomId").value;
-            if (!playerName || !roomId) { alert("请输入昵称和房间号"); return; }
+        async function joinRoom() {
+            await initDB();
+            nick = document.getElementById("nick").value.trim();
+            room = document.getElementById("roomId").value.trim();
+            if (!nick || !room) { alert("昵称和房间号不能为空"); return; }
+            let snap = await db.ref("rooms/"+room).get();
+            if (!snap.exists()) { alert("房间不存在"); return; }
+            await db.ref("rooms/"+room+"/players/"+nick).set({
+                ready: false, hp:80, atk:5, def:5
+            });
             enterRoom();
         }
 
         function enterRoom() {
-            document.getElementById("loginPage").style.display = "none";
-            document.getElementById("roomPage").style.display = "block";
-            document.getElementById("showRoomId").innerText = roomId;
-            addPlayer(playerName);
-            updatePlayerList();
-        }
-
-        function addPlayer(name) {
-            if (!players.includes(name)) players.push(name);
-        }
-
-        function updatePlayerList() {
-            let html = "";
-            players.forEach(p => {
-                let r = readyList[p] ? "✅ 已准备" : "⌛ 未准备";
-                html += `<div class="player"><span>${p}</span><span class='ready'>${r}</span></div>`;
-            });
-            document.getElementById("playerList").innerHTML = html;
+            document.getElementById("page1").style.display = "none";
+            document.getElementById("page2").style.display = "block";
+            document.getElementById("showId").innerText = room;
             if (isHost) document.getElementById("startBtn").style.display = "block";
+            listenRoom();
         }
 
-        function ready() {
-            readyList[playerName] = !readyList[playerName];
-            updatePlayerList();
-        }
-
-        function startBattle() {
-            document.getElementById("roomPage").style.display = "none";
-            document.getElementById("battlePage").style.display = "block";
-            showBattle();
-        }
-
-        function showBattle() {
-            let html = "";
-            players.forEach(p => {
-                html += `<div class='player'>${p} | 血量：80 | 攻击：5 | 防御：5</div>`;
+        function listenRoom() {
+            db.ref("rooms/"+room+"/players").on("value", snap => {
+                let list = snap.val() || {};
+                let html = "";
+                for (let p in list) {
+                    let r = list[p].ready ? "✅ 已准备" : "⌛ 未准备";
+                    html += `<div class="player-item"><span>${p}</span><span class="ready">${r}</span></div>`;
+                }
+                document.getElementById("players").innerHTML = html;
             });
-            document.getElementById("battlePlayers").innerHTML = html;
+            db.ref("rooms/"+room+"/start").on("value", snap => {
+                if (snap.val() === true) {
+                    document.getElementById("page2").style.display = "none";
+                    document.getElementById("page3").style.display = "block";
+                    showBattle();
+                }
+            });
+        }
+
+        async function toggleReady() {
+            ready = !ready;
+            await db.ref("rooms/"+room+"/players/"+nick+"/ready").set(ready);
+        }
+
+        async function startGame() {
+            if (!isHost) return;
+            await db.ref("rooms/"+room+"/start").set(true);
+        }
+
+        async function showBattle() {
+            let snap = await db.ref("rooms/"+room+"/players").get();
+            let list = snap.val() || {};
+            let html = "";
+            for (let p in list) {
+                html += `<div class="battle-player">${p} | 血量：80 | 攻击：5 | 防御：5</div>`;
+            }
+            document.getElementById("battleList").innerHTML = html;
         }
     </script>
 </body>
