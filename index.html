@@ -5,100 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>晖纹竞技场 - 弃路余晖</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: "Microsoft YaHei", sans-serif;
-        }
-        body {
-            background: #0b0f17;
-            color: #eaeaea;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            padding: 20px;
-        }
-        .container {
-            width: 100%;
-            max-width: 800px;
-            background: #161d2b;
-            border-radius: 16px;
-            padding: 28px;
-            box-shadow: 0 0 30px #000;
-            border: 1px solid #323d52;
-        }
-        .title {
-            text-align: center;
-            font-size: 28px;
-            color: #f5d042;
-            margin-bottom: 20px;
-            text-shadow: 0 0 10px #f5d04266;
-        }
-        input {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0;
-            border-radius: 8px;
-            border: 1px solid #444;
-            background: #212938;
-            color: white;
-            font-size: 16px;
-            outline: none;
-        }
-        button {
-            padding: 12px;
-            border-radius: 8px;
-            border: none;
-            font-size: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            margin: 4px;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei"; }
+        body { background: #0b0f17; color: #eaeaea; min-height: 100vh; display: flex; justify-content: center; padding: 20px; }
+        .container { width: 100%; max-width: 800px; background: #161d2b; border-radius: 16px; padding: 28px; box-shadow: 0 0 30px #000; border: 1px solid #323d52; }
+        .title { text-align: center; font-size: 28px; color: #f5d042; margin-bottom: 20px; text-shadow: 0 0 10px #f5d04266; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #444; background: #212938; color: white; font-size: 16px; outline: none; }
+        button { padding: 12px; border-radius: 8px; border: none; font-size: 15px; font-weight: bold; cursor: pointer; margin: 4px; }
         .btn-y { background: #f5d042; color: #111; }
         .btn-r { background: #e54a4a; color: white; }
         .btn-g { background: #3ba55d; color: white; }
         .btn-w { background: #374151; color: white; }
         .btn-block { width: 100%; margin: 6px 0; }
-        .player-item {
-            background: #242c3d;
-            padding: 12px;
-            border-radius: 8px;
-            margin: 8px 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .hp-bar {
-            width: 100%; height: 8px; background: #374151; border-radius: 4px; margin-top: 6px;
-        }
+        .player-item { background: #242c3d; padding: 12px; border-radius: 8px; margin: 8px 0; display: flex; justify-content: space-between; align-items: center; }
+        .hp-bar { width: 100%; height: 8px; background: #374151; border-radius: 4px; margin-top: 6px; }
         .hp-fill { height: 100%; background: #e54a4a; }
-        .energy-bar {
-            width: 100%; height: 6px; background: #374151; border-radius: 3px; margin-top: 4px;
-        }
+        .energy-bar { width: 100%; height: 6px; background: #374151; border-radius: 3px; margin-top: 4px; }
         .energy-fill { height: 100%; background: #3b82f6; }
-        .action-row {
-            display: flex;
-            gap: 10px;
-            margin: 20px 0;
-        }
-        .target-select {
-            margin: 12px 0;
-            padding: 12px;
-            background: #1f2937;
-            border-radius: 8px;
-        }
-        .log {
-            background: #111827;
-            padding: 14px;
-            border-radius: 8px;
-            font-size: 14px;
-            line-height: 1.5;
-            max-height: 200px;
-            overflow-y: auto;
-            margin: 16px 0;
-            color: #d1d5db;
-        }
+        .action-row { display: flex; gap: 10px; margin: 20px 0; }
+        .target-select { margin: 12px 0; padding: 12px; background: #1f2937; border-radius: 8px; }
+        .log { background: #111827; padding: 14px; border-radius: 8px; font-size: 14px; line-height: 1.5; max-height: 200px; overflow-y: auto; margin: 16px 0; color: #d1d5db; }
         .done { color: #10b981; font-weight: bold; }
         .waiting { color: #f59e0b; }
         .dead { color: #ef4444; text-decoration: line-through; }
@@ -107,192 +32,211 @@
 </head>
 <body>
 
+<!-- 登录页 -->
 <div class="container" id="loginPage">
     <div class="title">晖纹竞技场</div>
-    <input id="nick" placeholder="输入昵称">
-    <input id="roomId" placeholder="房间号（加入填写）">
+    <input id="nickInput" placeholder="输入昵称">
+    <input id="roomInput" placeholder="房间号（加入填写）">
     <button class="btn-block btn-y" onclick="createRoom()">创建房间</button>
     <button class="btn-block btn-y" onclick="joinRoom()">加入房间</button>
-    <div id="status" style="text-align:center; margin-top:10px; color:#f5d042;"></div>
+    <div id="tipText" style="text-align:center; margin-top:10px; color:#f5d042;">等待连接...</div>
 </div>
 
+<!-- 房间页 -->
 <div class="container" id="roomPage" style="display:none;">
-    <div class="title">房间：<span id="showRoom"></span></div>
+    <div class="title">房间：<span id="roomIdText"></span></div>
     <div id="playerList"></div>
-    <button class="btn-block btn-g" onclick="ready()">准备/取消</button>
+    <button class="btn-block btn-g" onclick="toggleReady()">准备/取消</button>
     <button class="btn-block btn-r" id="startBtn" style="display:none;" onclick="startGame()">开始游戏</button>
 </div>
 
+<!-- 战斗页 -->
 <div class="container" id="battlePage" style="display:none;">
     <div class="title">战斗中</div>
     <div id="battlePlayers"></div>
-    <div class="action-row" id="actionPanel" style="display:none;">
-        <button class="btn-r" onclick="chooseAttack()">攻击</button>
-        <button class="btn-w" onclick="chooseDefend()">防御</button>
-        <button class="btn-g" onclick="chooseSkip()">跳过</button>
+    <div class="action-row" id="actionBar">
+        <button class="btn-r" onclick="selectAttack()">攻击</button>
+        <button class="btn-w" onclick="selectDefend()">防御</button>
+        <button class="btn-g" onclick="selectSkip()">跳过</button>
     </div>
-    <div id="targetPanel" class="target-select" style="display:none;">
+    <div class="target-select" id="targetBox" style="display:none;">
         <div>选择目标：</div>
         <div id="targetList"></div>
     </div>
     <div class="log" id="battleLog"></div>
-    <div id="winner" class="winner" style="display:none;"></div>
+    <div id="winText" class="winner" style="display:none;"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
-let peer, myId, isHost = false, myNick, roomId;
+// 全局变量（无冲突）
+let peer, myID, myNick, roomID, isHost = false;
 let connections = [];
-let players = [];
-let readyList = {};
+let playerList = [];
+let readyStatus = {};
 
-function $(id) { return document.getElementById(id); }
-
-init();
-
-function init() {
+// 初始化Peer
+function initPeer() {
     peer = new Peer();
     peer.on('open', id => {
-        myId = id;
-        $('#status').innerText = '联机已就绪';
+        myID = id;
+        document.getElementById("tipText").innerText = "联机已就绪";
     });
-
+    // 接收新连接
     peer.on('connection', conn => {
         conn.on('open', () => {
             connections.push(conn);
-            conn.on('data', onData);
+            conn.on('data', handleMsg);
         });
     });
 }
 
-function broadcast(data) {
-    connections.forEach(c => {
-        if (c.open) c.send(data);
-    });
+// 房主广播消息
+function broadcast(msg) {
+    connections.forEach(c => c.open && c.send(msg));
 }
 
-function onData(data) {
-    switch (data.type) {
-        case 'PLAYER_JOIN':
-            if (isHost) {
-                players.push(data.player);
-                readyList[data.player.id] = false;
-                broadcast({ type: 'SYNC', players, readyList });
+// 处理所有消息
+function handleMsg(msg) {
+    switch(msg.type) {
+        // 成员加入
+        case "join":
+            if(isHost) {
+                playerList.push(msg.player);
+                readyStatus[msg.player.id] = false;
+                broadcast({type:"sync", players:playerList, ready:readyStatus});
             }
             break;
-        case 'SYNC':
-            players = data.players;
-            readyList = data.readyList;
+        // 同步房间数据
+        case "sync":
+            playerList = msg.players;
+            readyStatus = msg.ready;
             renderRoom();
             break;
-        case 'READY':
-            readyList[data.id] = data.value;
-            if (isHost) broadcast({ type: 'SYNC', players, readyList });
+        // 准备状态
+        case "ready":
+            readyStatus[msg.id] = msg.val;
+            if(isHost) broadcast({type:"sync", players:playerList, ready:readyStatus});
             renderRoom();
             break;
-        case 'START':
-            startBattle();
+        // 开始游戏
+        case "start":
+            enterBattle();
             break;
-        case 'ACTION':
-            if (isHost) {
-                let p = players.find(x => x.id === data.id);
-                if (p) p.act = data.act, p.tar = data.tar;
-                broadcast({ type: 'SYNC_BATTLE', players });
-                checkRound();
+        // 战斗动作
+        case "action":
+            if(isHost) {
+                let p = playerList.find(x=>x.id===msg.id);
+                if(p) {p.act=msg.act; p.tar=msg.tar;}
+                broadcast({type:"battleSync", players:playerList});
+                checkRoundEnd();
             }
             break;
-        case 'SYNC_BATTLE':
-            players = data.players;
+        // 同步战斗
+        case "battleSync":
+            playerList = msg.players;
             renderBattle();
             break;
-        case 'ROUND_END':
-            players = data.players;
-            $('#battleLog').innerHTML = data.log + '<br><br>' + $('#battleLog').innerHTML;
+        // 回合结算
+        case "roundEnd":
+            playerList = msg.players;
+            document.getElementById("battleLog").innerHTML = msg.log + "<br><br>" + document.getElementById("battleLog").innerHTML;
             renderBattle();
-            setTimeout(() => {
-                players.forEach(p => { p.act = null; p.tar = null; });
-                broadcast({ type: 'SYNC_BATTLE', players });
+            // 下一回合
+            setTimeout(()=>{
+                playerList.forEach(p=>{p.act=null; p.tar=null;});
+                broadcast({type:"battleSync", players:playerList});
                 renderBattle();
-            }, 2500);
+            },2500);
             break;
-        case 'WIN':
-            showWinner(data.winner);
+        // 胜利
+        case "win":
+            showWin(msg.winner);
             break;
     }
 }
 
+// 创建房间
 function createRoom() {
-    myNick = $('#nick').value.trim();
-    if (!myNick) { alert('请输入昵称'); return; }
+    myNick = document.getElementById("nickInput").value.trim();
+    if(!myNick) {alert("请输入昵称"); return;}
     isHost = true;
-    roomId = myId;
-    players.push({
-        id: myId, nick: myNick, hp:50, atk:8, df:5, en:0, maxEn:5, dead:false, act:null, tar:null
-    });
-    readyList[myId] = false;
+    roomID = myID;
+    playerList.push({id:myID, nick:myNick, hp:50, atk:8, df:5, en:0, maxEn:5, dead:false, act:null, tar:null});
+    readyStatus[myID] = false;
     enterRoom();
 }
 
+// 加入房间
 function joinRoom() {
-    myNick = $('#nick').value.trim();
-    roomId = $('#roomId').value.trim();
-    if (!myNick || !roomId) { alert('输入昵称和房间号'); return; }
-
-    let conn = peer.connect(roomId);
-    conn.on('open', () => {
+    myNick = document.getElementById("nickInput").value.trim();
+    roomID = document.getElementById("roomInput").value.trim();
+    if(!myNick || !roomID) {alert("输入昵称+房间号"); return;}
+    
+    let conn = peer.connect(roomID);
+    conn.on('open', ()=>{
         connections.push(conn);
-        conn.on('data', onData);
+        conn.on('data', handleMsg);
+        // 发送加入信息
         conn.send({
-            type: 'PLAYER_JOIN',
-            player: { id: myId, nick: myNick, hp:50, atk:8, df:5, en:0, maxEn:5, dead:false, act:null, tar:null }
+            type:"join",
+            player:{id:myID, nick:myNick, hp:50, atk:8, df:5, en:0, maxEn:5, dead:false, act:null, tar:null}
         });
         enterRoom();
     });
 }
 
+// 进入房间
 function enterRoom() {
-    $('#loginPage').style.display = 'none';
-    $('#roomPage').style.display = 'block';
-    $('#showRoom').innerText = roomId;
-    $('#startBtn').style.display = isHost ? 'block' : 'none';
+    document.getElementById("loginPage").style.display = "none";
+    document.getElementById("roomPage").style.display = "block";
+    document.getElementById("roomIdText").innerText = roomID;
+    if(isHost) document.getElementById("startBtn").style.display = "block";
     renderRoom();
 }
 
-function ready() {
-    readyList[myId] = !readyList[myId];
-    if (isHost) {
-        broadcast({ type: 'SYNC', players, readyList });
+// 切换准备
+function toggleReady() {
+    readyStatus[myID] = !readyStatus[myID];
+    if(isHost) {
+        broadcast({type:"sync", players:playerList, ready:readyStatus});
     } else {
-        connections.forEach(c => c.send({ type: 'READY', id: myId, value: readyList[myId] }));
+        connections.forEach(c=>c.send({type:"ready", id:myID, val:readyStatus[myID]}));
     }
     renderRoom();
 }
 
+// 渲染房间
 function renderRoom() {
-    $('#playerList').innerHTML = players.map(p => `
-    <div class="player-item">
-        <span>${p.nick}</span>
-        <span>${readyList[p.id] ? '✅ 已准备' : '⌛ 未准备'}</span>
-    </div>`).join('');
+    let html = "";
+    playerList.forEach(p=>{
+        let r = readyStatus[p.id] ? "✅ 已准备" : "⌛ 未准备";
+        html += `<div class="player-item"><span>${p.nick}</span><span>${r}</span></div>`;
+    });
+    document.getElementById("playerList").innerHTML = html;
 }
 
+// 开始游戏
 function startGame() {
-    if (!isHost) return;
-    broadcast({ type: 'START' });
-    startBattle();
+    if(!isHost) return;
+    broadcast({type:"start"});
+    enterBattle();
 }
 
-function startBattle() {
-    $('#roomPage').style.display = 'none';
-    $('#battlePage').style.display = 'block';
+// 进入战斗
+function enterBattle() {
+    document.getElementById("roomPage").style.display = "none";
+    document.getElementById("battlePage").style.display = "block";
     renderBattle();
 }
 
+// 渲染战斗
 function renderBattle() {
-    $('#battlePlayers').innerHTML = players.map(p => {
-        let cls = p.dead ? 'dead' : p.act ? 'done' : 'waiting';
-        let txt = p.dead ? '已阵亡' : p.act ? {a:'攻击',d:'防御',s:'跳过'}[p.act] : '等待';
-        return `
+    let html = "";
+    playerList.forEach(p=>{
+        let cls = p.dead ? "dead" : p.act ? "done" : "waiting";
+        let txt = p.dead ? "已阵亡" : p.act ? {a:"攻击",d:"防御",s:"跳过"}[p.act] : "等待";
+        html += `
         <div class="player-item ${cls}">
             <div>
                 <b>${p.nick}</b>
@@ -301,74 +245,91 @@ function renderBattle() {
             </div>
             <span>${txt}</span>
         </div>`;
-    }).join('');
-
-    let me = players.find(x => x.id === myId);
-    $('#actionPanel').style.display = (!me.dead && !me.act) ? 'flex' : 'none';
-    $('#targetPanel').style.display = 'none';
+    });
+    document.getElementById("battlePlayers").innerHTML = html;
+    
+    // 显示/隐藏操作栏
+    let me = playerList.find(x=>x.id===myID);
+    document.getElementById("actionBar").style.display = (!me.dead && !me.act) ? "flex" : "none";
+    document.getElementById("targetBox").style.display = "none";
     checkWin();
 }
 
-function chooseAttack() {
-    $('#actionPanel').style.display = 'none';
-    $('#targetPanel').style.display = 'block';
-    $('#targetList').innerHTML = players
-        .filter(p => p.id !== myId && !p.dead)
-        .map(p => `<button class="btn-block btn-r" onclick="submit('a','${p.id}')">${p.nick}</button>`).join('');
+// 选择攻击
+function selectAttack() {
+    document.getElementById("actionBar").style.display = "none";
+    document.getElementById("targetBox").style.display = "block";
+    let tarHtml = "";
+    playerList.forEach(p=>{
+        if(p.id!==myID && !p.dead) tarHtml += `<button class="btn-block btn-r" onclick="sendAction('a','${p.id}')">${p.nick}</button>`;
+    });
+    document.getElementById("targetList").innerHTML = tarHtml;
 }
-function chooseDefend() { submit('d', null); }
-function chooseSkip() { submit('s', null); }
+// 选择防御
+function selectDefend() {sendAction('d',null);}
+// 选择跳过
+function selectSkip() {sendAction('s',null);}
 
-function submit(act, tar) {
-    let me = players.find(x => x.id === myId);
-    me.act = act;
-    me.tar = tar;
-    connections.forEach(c => c.send({ type: 'ACTION', id: myId, act, tar }));
+// 发送动作
+function sendAction(act, tar) {
+    let me = playerList.find(x=>x.id===myID);
+    me.act = act; me.tar = tar;
+    connections.forEach(c=>c.send({type:"action", id:myID, act:act, tar:tar}));
     renderBattle();
 }
 
-function checkRound() {
-    if (!isHost) return;
-    let alive = players.filter(p => !p.dead);
-    if (alive.every(p => p.act)) resolveRound();
+// 检查回合结束
+function checkRoundEnd() {
+    if(!isHost) return;
+    let alive = playerList.filter(p=>!p.dead);
+    if(alive.every(p=>p.act)) resolveRound();
 }
 
+// 结算回合（房主计算）
 function resolveRound() {
-    let dmg = {}; players.forEach(p => dmg[p.id] = 0);
-    players.forEach(p => { if (p.act === 'a' && p.tar) dmg[p.tar] += p.atk; });
-
-    let log = ['--- 回合结算 ---'];
-    players.forEach(p => {
-        if (p.dead) return;
-        let t = p.tar ? players.find(x => x.id === p.tar) : null;
-        if (p.act === 'a') log.push(`${p.nick} 攻击 ${t?.nick}`);
-        if (p.act === 'd') log.push(`${p.nick} 防御`);
-        if (p.act === 's') { p.en = Math.min(p.en+1,5); log.push(`${p.nick} 跳过，能量+1`); }
+    let damage = {};
+    playerList.forEach(p=>damage[p.id]=0);
+    playerList.forEach(p=>{if(p.act==='a'&&p.tar) damage[p.tar]+=p.atk;});
+    
+    let log = ["--- 回合结算 ---"];
+    // 记录动作
+    playerList.forEach(p=>{
+        if(p.dead) return;
+        let tar = p.tar ? playerList.find(x=>x.id===p.tar) : null;
+        if(p.act==='a') log.push(`${p.nick} 攻击 ${tar?.nick}`);
+        if(p.act==='d') log.push(`${p.nick} 防御`);
+        if(p.act==='s') {p.en=Math.min(p.en+1,5); log.push(`${p.nick} 跳过，能量+1`);}
     });
-    players.forEach(p => {
-        if (p.dead) return;
-        let v = p.act === 'd' ? Math.max(0, dmg[p.id]-p.df) : dmg[p.id];
-        p.hp -= v;
-        if (v>0) log.push(`${p.nick} 受到 ${v} 点伤害`);
-        if (p.hp <= 0) { p.hp=0; p.dead=true; log.push(`${p.nick} 已阵亡！`); }
+    // 记录伤害
+    playerList.forEach(p=>{
+        if(p.dead) return;
+        let dmg = p.act==='d' ? Math.max(0, damage[p.id]-p.df) : damage[p.id];
+        p.hp -= dmg;
+        if(dmg>0) log.push(`${p.nick} 受到 ${dmg} 点伤害`);
+        if(p.hp<=0) {p.hp=0; p.dead=true; log.push(`${p.nick} 已阵亡！`);}
     });
-
-    broadcast({ type: 'ROUND_END', players, log: log.join('<br>') });
+    
+    broadcast({type:"roundEnd", players:playerList, log:log.join("<br>")});
     renderBattle();
 }
 
+// 检查胜利
 function checkWin() {
-    let alive = players.filter(p => !p.dead);
-    if (alive.length === 1) {
-        broadcast({ type: 'WIN', winner: alive[0].nick });
-        showWinner(alive[0].nick);
+    let alive = playerList.filter(p=>!p.dead);
+    if(alive.length===1) {
+        broadcast({type:"win", winner:alive[0].nick});
+        showWin(alive[0].nick);
     }
 }
 
-function showWinner(name) {
-    $('#winner').style.display = 'block';
-    $('#winner').innerText = `🎉 ${name} 获得胜利！`;
+// 显示胜利
+function showWin(name) {
+    document.getElementById("winText").style.display = "block";
+    document.getElementById("winText").innerText = `🎉 ${name} 获得胜利！`;
 }
+
+// 启动
+initPeer();
 </script>
 </body>
 </html>
