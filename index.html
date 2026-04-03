@@ -130,7 +130,6 @@
         <button class="btn-r" onclick="chooseAttack()">攻击</button>
         <button class="btn-w" onclick="chooseDefend()">防御</button>
         <button class="btn-g" onclick="chooseSkip()">跳过</button>
-    </button>
     </div>
     <div id="targetPanel" class="target-select" style="display:none;">
         <div>选择目标：</div>
@@ -147,114 +146,134 @@ let conns = [];
 let players = [];
 let readyMap = {};
 let actions = {};
-let phase = "login"; // login, room, battle, round, resolve, end
+let phase = "login";
 
 function $(id) { return document.getElementById(id); }
 
 function initPeer() {
     peer = new Peer();
-    peer.on('open', id => { myId = id; });
+    peer.on('open', id => {
+        myId = id;
+        $("status").innerText = "联机已连接";
+    });
     peer.on('connection', conn => {
-        conns.push(conn);
-        conn.on('data', d => recv(d, conn));
+        conn.on('open', () => {
+            conns.push(conn);
+            conn.on('data', recv);
+            if (isHost) syncAll();
+        });
     });
 }
 
-function sendAll(data) { conns.forEach(c => c.send(data)); }
+function sendAll(data) {
+    conns.forEach(c => c.send(data));
+}
 
-function recv(data, conn) {
-    switch(data.t) {
-        case 'join':
-            players.push(data.p);
-            readyMap[data.p.id] = false;
-            syncPlayers(); break;
-        case 'ready':
+function recv(data) {
+    switch (data.t) {
+        case "syncAll":
+            players = data.players;
+            readyMap = data.readyMap;
+            syncRoom();
+            break;
+        case "ready":
             readyMap[data.id] = data.v;
-            syncPlayers(); break;
-        case 'start':
-            startBattle(); break;
-        case 'act':
-            actions[data.id] = data.a;
-            syncActions(); break;
-        case 'sync':
+            if (isHost) syncAll();
+            syncRoom();
+            break;
+        case "gameStart":
+            startBattle();
+            break;
+        case "battleSync":
             players = data.players;
             actions = data.actions;
-            syncBattle(); break;
-        case 'resolve':
-            players = data.players;
-            phase = 'resolve';
             syncBattle();
-            setTimeout(nextRound, 2500); break;
-        case 'win':
-            showWinner(data.w); break;
+            break;
+        case "resolve":
+            players = data.players;
+            actions = {};
+            phase = "resolve";
+            syncBattle();
+            setTimeout(nextRound, 2500);
+            break;
+        case "win":
+            showWinner(data.w);
+            break;
     }
 }
 
+function syncAll() {
+    sendAll({ t: "syncAll", players, readyMap });
+}
+
 function createRoom() {
-    myNick = $('nick').value.trim();
-    if (!myNick) return alert('输入昵称');
+    myNick = $("nick").value.trim();
+    if (!myNick) return alert("请输入昵称");
     isHost = true;
     roomId = myId;
-    players.push({ id: myId, nick: myNick, hp:50, atk:8, df:5, en:0, maxEn:5, dead:false, act:null, tar:null });
+    players.push({
+        id: myId, nick: myNick, hp: 50, atk: 8, df: 5, en: 0, maxEn: 5, dead: false, act: null, tar: null
+    });
     readyMap[myId] = false;
     enterRoom();
 }
 
 function joinRoom() {
-    myNick = $('nick').value.trim();
-    roomId = $('roomId').value.trim();
-    if (!myNick || !roomId) return alert('昵称+房间号');
+    myNick = $("nick").value.trim();
+    roomId = $("roomId").value.trim();
+    if (!myNick || !roomId) return alert("输入昵称和房间号");
     let conn = peer.connect(roomId);
     conn.on('open', () => {
         conns.push(conn);
-        conn.on('data', d => recv(d, conn));
-        let p = { id: myId, nick: myNick, hp:50, atk:8, df:5, en:0, maxEn:5, dead:false, act:null, tar:null };
-        players.push(p);
-        conn.send({t:'join', p:p});
-        enterRoom();
+        conn.on('data', recv);
     });
 }
 
 function enterRoom() {
-    $('loginPage').style.display='none'; $('roomPage').style.display='block';
-    $('showRoom').innerText = roomId;
-    if (isHost) $('startBtn').style.display='block';
-    syncPlayers();
+    $("loginPage").style.display = "none";
+    $("roomPage").style.display = "block";
+    $("showRoom").innerText = roomId;
+    if (isHost) $("startBtn").style.display = "block";
+    syncRoom();
 }
 
 function ready() {
     readyMap[myId] = !readyMap[myId];
-    sendAll({t:'ready', id:myId, v:readyMap[myId]});
-    syncPlayers();
+    sendAll({ t: "ready", id: myId, v: readyMap[myId] });
+    syncRoom();
+}
+
+function syncRoom() {
+    let html = "";
+    players.forEach(p => {
+        let r = readyMap[p.id] ? "✅ 已准备" : "⌛ 未准备";
+        html += `<div class="player-item"><span>${p.nick}</span><span>${r}</span></div>`;
+    });
+    $("playerList").innerHTML = html;
 }
 
 function startGame() {
     if (!isHost) return;
-    sendAll({t:'start'});
+    sendAll({ t: "gameStart" });
     startBattle();
 }
 
 function startBattle() {
-    phase = 'round';
-    $('roomPage').style.display='none'; $('battlePage').style.display='block';
+    phase = "round";
+    $("roomPage").style.display = "none";
+    $("battlePage").style.display = "block";
     syncBattle();
 }
 
-function syncPlayers() {
-    let html = '';
-    players.forEach(p => {
-        let r = readyMap[p.id] ? '✅ 已准备' : '⌛ 未准备';
-        html += `<div class="player-item"><span>${p.nick}</span><span>${r}</span></div>`;
-    });
-    $('playerList').innerHTML = html;
+function me() {
+    return players.find(x => x.id === myId);
 }
 
 function syncBattle() {
-    let html = '';
+    let html = "";
     players.forEach(p => {
-        let cls = p.dead ? 'dead' : (p.act ? 'done' : 'waiting');
-        let actTxt = p.act ? {a:'攻击',d:'防御',s:'跳过'}[p.act] : '等待';
-        if (p.dead) actTxt = '已阵亡';
+        let cls = p.dead ? "dead" : p.act ? "done" : "waiting";
+        let txt = p.dead ? "已阵亡" : p.act ? { a: "攻击", d: "防御", s: "跳过" }[p.act] : "等待";
         html += `
         <div class="player-item ${cls}">
             <div>
@@ -262,123 +281,88 @@ function syncBattle() {
                 <div class="hp-bar"><div class="hp-fill" style="width:${p.hp/50*100}%"></div></div>
                 <div style="font-size:12px;">HP:${p.hp} ATK:${p.atk} DF:${p.df} EN:${p.en}/${p.maxEn}</div>
             </div>
-            <div>${actTxt}</div>
+            <span>${txt}</span>
         </div>`;
     });
-    $('battlePlayers').innerHTML = html;
-    if (phase === 'round' && !me().dead && !me().act) {
-        $('actionPanel').style.display = 'flex';
+    $("battlePlayers").innerHTML = html;
+    if (phase === "round" && !me().dead && !me().act) {
+        $("actionPanel").style.display = "flex";
     } else {
-        $('actionPanel').style.display = 'none';
+        $("actionPanel").style.display = "none";
     }
     checkWinner();
 }
 
-function syncActions() {
-    players.forEach(p => p.act = actions[p.id]?.a || null);
-    syncBattle();
-    if (isHost) checkAllDone();
-}
-
-function me() { return players.find(x=>x.id===myId); }
-
 function chooseAttack() {
-    $('actionPanel').style.display='none';
-    $('targetPanel').style.display='block';
-    let alive = players.filter(p=>!p.dead && p.id!==myId);
-    $('targetList').innerHTML = alive.map(p=>`
-        <button class="btn-block btn-r" onclick="setTarget('${p.id}')">${p.nick}</button>
-    `).join('');
+    $("actionPanel").style.display = "none";
+    $("targetPanel").style.display = "block";
+    let list = players.filter(p => p.id !== myId && !p.dead);
+    $("targetList").innerHTML = list.map(p =>
+        `<button class="btn-block btn-r" onclick="setAction('a','${p.id}')">${p.nick}</button>`
+    ).join('');
 }
+function chooseDefend() { setAction("d", null); }
+function chooseSkip() { setAction("s", null); }
 
-function chooseDefend() { sendAction('d', null); }
-function chooseSkip() { sendAction('s', null); }
-function setTarget(tid) { sendAction('a', tid); }
-
-function sendAction(a, tar) {
-    $('targetPanel').style.display='none';
-    let me = me();
-    me.act = a; me.tar = tar;
-    actions[myId] = {a, tar};
-    sendAll({t:'act', id:myId, a:{a,tar}});
-    if (isHost) sendAll({t:'sync', players, actions});
-    syncBattle();
+function setAction(a, tar) {
+    $("targetPanel").style.display = "none";
+    let m = me();
+    m.act = a;
+    m.tar = tar;
+    actions[myId] = { a, tar };
+    if (isHost) {
+        syncBattle();
+        checkAllDone();
+    } else {
+        sendAll({ t: "act", a, tar });
+    }
 }
 
 function checkAllDone() {
-    let alive = players.filter(p=>!p.dead);
-    let done = alive.every(p=>actions[p.id]?.a);
-    if (done) resolveRound();
+    if (!isHost) return;
+    let alive = players.filter(p => !p.dead);
+    let done = alive.every(p => p.act);
+    if (done) resolve();
 }
 
-function resolveRound() {
-    phase = 'resolve';
-    let log = [];
-    let alive = players.filter(p=>!p.dead);
-
-    let damageMap = {};
-    alive.forEach(p => damageMap[p.id] = 0);
-
-    alive.forEach(p => {
-        let a = actions[p.id]?.a;
-        let t = actions[p.id]?.tar;
-        if (a === 'a' && t) {
-            damageMap[t] += p.atk;
-        }
+function resolve() {
+    phase = "resolve";
+    let dmg = {};
+    players.forEach(p => dmg[p.id] = 0);
+    players.forEach(p => {
+        if (p.act === "a" && p.tar) dmg[p.tar] += p.atk;
     });
-
-    alive.forEach(p => {
-        let a = actions[p.id]?.a;
-        if (a === 'd') {
-            let dmg = Math.max(0, damageMap[p.id] - p.df);
-            p.hp -= dmg;
-            log.push(`${p.nick} 防御，受到 ${dmg} 伤害`);
-        } else if (a === 's') {
-            p.en = Math.min(p.en+1, p.maxEn);
-            log.push(`${p.nick} 跳过，能量+1`);
-        } else {
-            let dmg = damageMap[p.id];
-            p.hp -= dmg;
-            log.push(`${p.nick} 受到 ${dmg} 点伤害`);
-        }
-        if (p.hp <= 0) {
-            p.hp = 0; p.dead = true;
-            log.push(`${p.nick} 已阵亡！`);
-        }
+    players.forEach(p => {
+        if (p.dead) return;
+        if (p.act === "d") p.hp -= Math.max(0, dmg[p.id] - p.df);
+        else if (p.act === "s") p.en = Math.min(p.en + 1, 5);
+        else p.hp -= dmg[p.id];
+        if (p.hp <= 0) { p.hp = 0; p.dead = true; }
     });
-
-    actions = {};
     players.forEach(p => { p.act = null; p.tar = null; });
-    sendAll({t:'resolve', players});
-    showLog(log);
+    actions = {};
+    sendAll({ t: "resolve", players });
+    syncBattle();
     checkWinner();
 }
 
 function nextRound() {
-    phase = 'round';
-    actions = {};
-    players.forEach(p => { p.act = null; p.tar = null; });
-    sendAll({t:'sync', players, actions});
+    phase = "round";
     syncBattle();
 }
 
-function showLog(arr) {
-    $('battleLog').innerHTML = arr.join('<br>');
-}
-
 function checkWinner() {
-    let alive = players.filter(p=>!p.dead);
+    let alive = players.filter(p => !p.dead);
     if (alive.length === 1) {
         let w = alive[0].nick;
-        if (isHost) sendAll({t:'win', w});
+        sendAll({ t: "win", w });
         showWinner(w);
     }
 }
 
 function showWinner(w) {
-    phase = 'end';
-    $('winner').style.display='block';
-    $('winner').innerText = `🎉 ${w} 获得胜利！`;
+    $("winner").style.display = "block";
+    $("winner").innerText = `🎉 ${w} 胜利！`;
 }
 
 window.onload = initPeer;
