@@ -145,7 +145,7 @@ let peer, myId, roomId, isHost = false, myNick;
 let conns = [];
 let players = [];
 let readyMap = {};
-let phase = "login";
+let roundActions = {};
 
 function $(id) { return document.getElementById(id); }
 
@@ -158,64 +158,84 @@ function initPeer() {
     peer.on('connection', conn => {
         conn.on('open', () => {
             conns.push(conn);
-            conn.on('data', recv);
+            conn.on('data', data => handleMessage(data, conn));
         });
     });
 }
 
-function sendAll(data) {
-    conns.forEach(c => { if (c.open) c.send(data); });
+function sendToHost(data) {
+    if (isHost) return;
+    conns.forEach(c => c.open && c.send(data));
 }
 
-function recv(data) {
-    switch (data.t) {
-        case "join":
-            players.push(data.p);
-            readyMap[data.p.id] = false;
-            syncRoom(); syncAll();
+function broadcast(data) {
+    conns.forEach(c => c.open && c.send(data));
+}
+
+function handleMessage(data, conn) {
+    switch (data.type) {
+        case "PLAYER_JOIN":
+            if (isHost) {
+                players.push(data.player);
+                readyMap[data.player.id] = false;
+                broadcast({ type: "ROOM_SYNC", players, readyMap });
+            }
             break;
-        case "syncAll":
+
+        case "PLAYER_READY":
+            readyMap[data.id] = data.ready;
+            if (isHost) broadcast({ type: "ROOM_SYNC", players, readyMap });
+            break;
+
+        case "ROOM_SYNC":
             players = data.players;
             readyMap = data.readyMap;
-            syncRoom();
+            renderRoom();
             break;
-        case "ready":
-            readyMap[data.id] = data.v;
-            syncAll();
-            break;
-        case "start":
+
+        case "GAME_START":
             startBattle();
             break;
-        case "action":
-            let tp = players.find(x => x.id === data.id);
-            if (tp) { tp.act = data.a; tp.tar = data.tar; }
-            syncBattle();
-            if (isHost) checkAllDone();
+
+        case "ACTION_SUBMIT":
+            if (isHost) {
+                let p = players.find(x => x.id === data.id);
+                if (p) {
+                    p.act = data.act;
+                    p.tar = data.tar;
+                    roundActions[data.id] = { act: data.act, tar: data.tar };
+                    broadcast({ type: "PLAYER_SYNC", players });
+                    checkAllSubmitted();
+                }
+            }
             break;
-        case "resolve":
+
+        case "PLAYER_SYNC":
             players = data.players;
-            phase = "resolve";
+            renderBattle();
+            break;
+
+        case "ROUND_RESULT":
+            players = data.players;
             $("battleLog").innerHTML = data.log + "<br><br>" + $("battleLog").innerHTML;
-            syncBattle();
+            renderBattle();
             setTimeout(() => {
-                phase = "round";
                 players.forEach(p => { p.act = null; p.tar = null; });
-                syncBattle();
+                roundActions = {};
+                broadcast({ type: "PLAYER_SYNC", players });
+                renderBattle();
             }, 2600);
             break;
-        case "win":
-            showWinner(data.w);
+
+        case "GAME_WIN":
+            showWinner(data.winner);
             break;
     }
 }
 
-function syncAll() {
-    sendAll({ t: "syncAll", players, readyMap });
-}
-
 function createRoom() {
     myNick = $("nick").value.trim();
-    if (!myNick) return alert("输入昵称");
+    if (!myNick) return alert("请输入昵称");
     isHost = true;
     roomId = myId;
     players.push({
@@ -228,14 +248,15 @@ function createRoom() {
 function joinRoom() {
     myNick = $("nick").value.trim();
     roomId = $("roomId").value.trim();
-    if (!myNick || !roomId) return alert("输入昵称+房间号");
+    if (!myNick || !roomId) return alert("输入昵称和房间号");
     let conn = peer.connect(roomId);
     conn.on('open', () => {
         conns.push(conn);
-        conn.on('data', recv);
-        let p = { id: myId, nick: myNick, hp: 50, atk: 8, df: 5, en: 0, maxEn: 5, dead: false, act: null, tar: null };
-        conn.send({ t: "join", p });
-        enterRoom();
+        conn.on('data', d => handleMessage(d, conn));
+        conn.send({
+            type: "PLAYER_JOIN",
+            player: { id: myId, nick: myNick, hp: 50, atk: 8, df: 5, en: 0, maxEn: 5, dead: false, act: null, tar: null }
+        });
     });
 }
 
@@ -244,16 +265,32 @@ function enterRoom() {
     $("roomPage").style.display = "block";
     $("showRoom").innerText = roomId;
     if (isHost) $("startBtn").style.display = "block";
-    syncRoom();
+    renderRoom();
 }
 
 function ready() {
     readyMap[myId] = !readyMap[myId];
-    sendAll({ t: "ready", id: myId, v: readyMap[myId] });
-    syncRoom();
+    if (isHost) {
+        broadcast({ type: "PLAYER_READY", id: myId, ready: readyMap[myId] });
+    } else {
+        sendToHost({ type: "PLAYER_READY", id: myId, ready: readyMap[myId] });
+    }
+    renderRoom();
 }
 
-function syncRoom() {
+function startGame() {
+    if (!isHost) return;
+    broadcast({ type: "GAME_START" });
+    startBattle();
+}
+
+function startBattle() {
+    $("roomPage").style.display = "none";
+    $("battlePage").style.display = "block";
+    renderBattle();
+}
+
+function renderRoom() {
     $("playerList").innerHTML = players.map(p => `
     <div class="player-item">
         <span>${p.nick}</span>
@@ -261,23 +298,7 @@ function syncRoom() {
     </div>`).join('');
 }
 
-function startGame() {
-    if (isHost) sendAll({ t: "start" });
-    startBattle();
-}
-
-function startBattle() {
-    phase = "round";
-    $("roomPage").style.display = "none";
-    $("battlePage").style.display = "block";
-    syncBattle();
-}
-
-function me() {
-    return players.find(x => x.id === myId);
-}
-
-function syncBattle() {
+function renderBattle() {
     $("battlePlayers").innerHTML = players.map(p => {
         let cls = p.dead ? "dead" : p.act ? "done" : "waiting";
         let txt = p.dead ? "已阵亡" : p.act ? { a:"攻击",d:"防御",s:"跳过" }[p.act] : "等待";
@@ -292,13 +313,15 @@ function syncBattle() {
         </div>`;
     }).join('');
 
-    const m = me();
-    if (phase === "round" && !m.dead && !m.act) {
+    let me = players.find(x => x.id === myId);
+    if (!me.dead && !me.act) {
         $("actionPanel").style.display = "flex";
     } else {
         $("actionPanel").style.display = "none";
+        $("targetPanel").style.display = "none";
     }
-    checkWinner();
+
+    checkWin();
 }
 
 function chooseAttack() {
@@ -306,79 +329,78 @@ function chooseAttack() {
     $("targetPanel").style.display = "block";
     $("targetList").innerHTML = players
         .filter(p => p.id !== myId && !p.dead)
-        .map(p => `<button class="btn-block btn-r" onclick="selectTar('${p.id}')">${p.nick}</button>`)
+        .map(p => `<button class="btn-block btn-r" onclick="selectTarget('${p.id}')">${p.nick}</button>`)
         .join('');
 }
-function chooseDefend() { submit("d", null); }
-function chooseSkip() { submit("s", null); }
-function selectTar(t) { $("targetPanel").style.display = "none"; submit("a", t); }
 
-function submit(a, tar) {
-    const m = me();
-    m.act = a; m.tar = tar;
-    sendAll({ t:"action", id:myId, a:a, tar:tar });
-    syncBattle();
-    if (isHost) checkAllDone();
+function chooseDefend() { submitAction("d", null); }
+function chooseSkip() { submitAction("s", null); }
+function selectTarget(t) { $("targetPanel").style.display = "none"; submitAction("a", t); }
+
+function submitAction(act, tar) {
+    let me = players.find(x => x.id === myId);
+    me.act = act;
+    me.tar = tar;
+
+    sendToHost({
+        type: "ACTION_SUBMIT",
+        id: myId,
+        act: act,
+        tar: tar
+    });
+
+    renderBattle();
 }
 
-function checkAllDone() {
+function checkAllSubmitted() {
     if (!isHost) return;
-    const alive = players.filter(p => !p.dead);
-    const done = alive.every(p => p.act);
-    if (done) resolve();
+    let alive = players.filter(p => !p.dead);
+    let done = alive.every(p => p.act);
+    if (done) resolveRound();
 }
 
-function resolve() {
-    phase = "resolve";
-    const dmg = {};
-    players.forEach(p => dmg[p.id] = 0);
+function resolveRound() {
+    let damage = {};
+    players.forEach(p => damage[p.id] = 0);
     players.forEach(p => {
-        if (p.act === "a" && p.tar) dmg[p.tar] += p.atk;
+        if (p.act === "a" && p.tar) damage[p.tar] += p.atk;
     });
 
-    const logs = [];
-    logs.push("--- 回合结算 ---");
+    let logs = ["--- 回合结算 ---"];
 
     players.forEach(p => {
         if (p.dead) return;
-        const tarPlayer = p.tar ? players.find(x => x.id === p.tar) : null;
-        if (p.act === "a") {
-            logs.push(`${p.nick} 攻击了 ${tarPlayer?.nick || "空"}`);
-        } else if (p.act === "d") {
-            logs.push(`${p.nick} 选择防御`);
-        } else if (p.act === "s") {
-            p.en = Math.min(p.en + 1, 5);
-            logs.push(`${p.nick} 跳过，能量+1（当前：${p.en}）`);
-        }
+        let t = p.tar ? players.find(x => x.id === p.tar) : null;
+        if (p.act === "a") logs.push(`${p.nick} 攻击 ${t?.nick}`);
+        if (p.act === "d") logs.push(`${p.nick} 防御`);
+        if (p.act === "s") { p.en = Math.min(p.en+1,5); logs.push(`${p.nick} 跳过，能量+1`); }
     });
 
     players.forEach(p => {
         if (p.dead) return;
-        let taken = 0;
-        if (p.act === "d") {
-            taken = Math.max(0, dmg[p.id] - p.df);
-            logs.push(`${p.nick} 防御，受到 ${taken} 伤害`);
-        } else {
-            taken = dmg[p.id];
-            if (taken > 0) logs.push(`${p.nick} 受到 ${taken} 点伤害`);
-        }
-        p.hp -= taken;
-        if (p.hp <= 0) {
-            p.hp = 0; p.dead = true;
-            logs.push(`${p.nick} 已阵亡！`);
-        }
+        let d = 0;
+        if (p.act === "d") d = Math.max(0, damage[p.id] - p.df);
+        else d = damage[p.id];
+        p.hp -= d;
+        if (d > 0) logs.push(`${p.nick} 受到 ${d} 点伤害`);
+        if (p.hp <= 0) { p.hp=0; p.dead=true; logs.push(`${p.nick} 已阵亡！`); }
     });
 
-    sendAll({ t:"resolve", players, log: logs.join("<br>") });
-    syncBattle();
+    broadcast({
+        type: "ROUND_RESULT",
+        players,
+        log: logs.join("<br>")
+    });
+
+    renderBattle();
+    checkWin();
 }
 
-function checkWinner() {
-    const alive = players.filter(p => !p.dead);
+function checkWin() {
+    let alive = players.filter(p => !p.dead);
     if (alive.length === 1) {
-        const w = alive[0].nick;
-        sendAll({ t:"win", w });
-        showWinner(w);
+        broadcast({ type: "GAME_WIN", winner: alive[0].nick });
+        showWinner(alive[0].nick);
     }
 }
 
