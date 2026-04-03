@@ -165,11 +165,11 @@ function initPeer() {
 
 function sendToHost(data) {
     if (isHost) return;
-    conns.forEach(c => c.open && c.send(data));
+    conns.forEach(c => { if (c.open) c.send(data); });
 }
 
 function broadcast(data) {
-    conns.forEach(c => c.open && c.send(data));
+    conns.forEach(c => { if (c.open) c.send(data); });
 }
 
 function handleMessage(data, conn) {
@@ -249,14 +249,25 @@ function joinRoom() {
     myNick = $("nick").value.trim();
     roomId = $("roomId").value.trim();
     if (!myNick || !roomId) return alert("输入昵称和房间号");
+    
     let conn = peer.connect(roomId);
     conn.on('open', () => {
         conns.push(conn);
         conn.on('data', d => handleMessage(d, conn));
-        conn.send({
-            type: "PLAYER_JOIN",
-            player: { id: myId, nick: myNick, hp: 50, atk: 8, df: 5, en: 0, maxEn: 5, dead: false, act: null, tar: null }
-        });
+        let newPlayer = {
+            id: myId,
+            nick: myNick,
+            hp: 50,
+            atk: 8,
+            df: 5,
+            en: 0,
+            maxEn: 5,
+            dead: false,
+            act: null,
+            tar: null
+        };
+        conn.send({ type: "PLAYER_JOIN", player: newPlayer });
+        enterRoom();
     });
 }
 
