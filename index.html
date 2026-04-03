@@ -69,13 +69,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
-// 全局变量（无冲突）
-let peer, myID, myNick, roomID, isHost = false;
+// 全局变量（严格中心化：仅房主修改数据，成员只接收）
+let peer, myID, myNick, isHost = false;
 let connections = [];
-let playerList = [];
-let readyStatus = {};
+let playerData = []; // 唯一数据源，由房主维护
+let readyMap = {};
 let roomCode = ""; // 6位房间号
-let hostPeerID = ""; // 房主真实PeerID
+const roomMap = {}; // 6位码 → 房主PeerID
 
 // 初始化Peer
 function initPeer() {
@@ -84,115 +84,105 @@ function initPeer() {
         myID = id;
         document.getElementById("tipText").innerText = "联机已就绪";
     });
-    // 接收新连接
     peer.on('connection', conn => {
         conn.on('open', () => {
             connections.push(conn);
-            conn.on('data', handleMsg);
+            conn.on('data', handleMessage);
         });
     });
 }
 
-// 房主广播消息
+// 房主广播所有数据
 function broadcast(msg) {
     connections.forEach(c => c.open && c.send(msg));
 }
 
-// 处理所有消息
-function handleMsg(msg) {
-    switch(msg.type) {
-        // 成员请求加入（6位房间号验证）
-        case "reqJoin":
-            if(isHost && msg.roomCode === roomCode) {
-                conn.send({type:"hostID", hostID:myID});
-                playerList.push(msg.player);
-                readyStatus[msg.player.id] = false;
-                broadcast({type:"sync", players:playerList, ready:readyStatus});
+// 统一消息处理（仅房主处理数据，成员只渲染）
+function handleMessage(msg) {
+    switch (msg.type) {
+        // 成员加入：房主添加玩家→广播
+        case "PLAYER_JOIN":
+            if (isHost) {
+                playerData.push(msg.player);
+                readyMap[msg.player.id] = false;
+                broadcast({ type: "SYNC_ALL", players: playerData, ready: readyMap });
             }
             break;
-        // 房主返回真实ID
-        case "hostID":
-            hostPeerID = msg.hostID;
-            let conn = peer.connect(hostPeerID);
-            conn.on('open', ()=>{
-                connections.push(conn);
-                conn.on('data', handleMsg);
-                enterRoom();
-            });
-            break;
-        // 同步房间数据
-        case "sync":
-            playerList = msg.players;
-            readyStatus = msg.ready;
+        // 全员同步：接收房主数据，本地覆盖
+        case "SYNC_ALL":
+            playerData = msg.players;
+            readyMap = msg.ready;
             renderRoom();
             break;
-        // 准备状态
-        case "ready":
-            readyStatus[msg.id] = msg.val;
-            if(isHost) broadcast({type:"sync", players:playerList, ready:readyStatus});
-            renderRoom();
+        // 准备：房主更新→广播
+        case "PLAYER_READY":
+            if (isHost) {
+                readyMap[msg.id] = msg.val;
+                broadcast({ type: "SYNC_ALL", players: playerData, ready: readyMap });
+            }
             break;
-        // 开始游戏
-        case "start":
+        // 开始游戏：房主广播
+        case "GAME_START":
             enterBattle();
             break;
-        // 战斗动作
-        case "action":
-            if(isHost) {
-                let p = playerList.find(x=>x.id===msg.id);
-                if(p) {p.act=msg.act; p.tar=msg.tar;}
-                broadcast({type:"battleSync", players:playerList});
-                checkRoundEnd();
+        // 动作提交：房主更新→广播战斗状态
+        case "ACTION_SUBMIT":
+            if (isHost) {
+                let p = playerData.find(x => x.id === msg.id);
+                if (p) { p.act = msg.act; p.tar = msg.tar; }
+                broadcast({ type: "SYNC_BATTLE", players: playerData });
+                checkRoundFinish();
             }
             break;
-        // 同步战斗
-        case "battleSync":
-            playerList = msg.players;
+        // 战斗同步：接收房主战斗数据
+        case "SYNC_BATTLE":
+            playerData = msg.players;
             renderBattle();
             break;
-        // 回合结算（日志全员同步）
-        case "roundEnd":
-            playerList = msg.players;
+        // 回合结束：房主广播日志+数据
+        case "ROUND_END":
+            playerData = msg.players;
             document.getElementById("battleLog").innerHTML = msg.log + "<br><br>" + document.getElementById("battleLog").innerHTML;
             renderBattle();
-            // 下一回合
-            setTimeout(()=>{
-                playerList.forEach(p=>{p.act=null; p.tar=null;});
-                broadcast({type:"battleSync", players:playerList});
+            setTimeout(() => {
+                playerData.forEach(p => { p.act = null; p.tar = null; });
+                broadcast({ type: "SYNC_BATTLE", players: playerData });
                 renderBattle();
-            },2500);
+            }, 2500);
             break;
-        // 胜利
-        case "win":
-            showWin(msg.winner);
+        // 胜利：房主广播
+        case "GAME_WIN":
+            showWinner(msg.winner);
             break;
     }
 }
 
-// 创建房间（6位数字房间号）
+// 创建房间（6位数字）
 function createRoom() {
     myNick = document.getElementById("nickInput").value.trim();
-    if(!myNick) {alert("请输入昵称"); return;}
+    if (!myNick) { alert("请输入昵称"); return; }
     isHost = true;
-    roomCode = Math.floor(100000 + Math.random() * 900000).toString(); // 6位随机数
-    roomID = roomCode;
-    playerList.push({id:myID, nick:myNick, hp:50, atk:8, df:5, en:0, maxEn:5, dead:false, act:null, tar:null});
-    readyStatus[myID] = false;
+    roomCode = Math.floor(100000 + Math.random() * 900000).toString();
+    roomMap[roomCode] = myID;
+    playerData.push({ id: myID, nick: myNick, hp: 50, atk: 8, df: 5, en: 0, maxEn: 5, dead: false, act: null, tar: null });
+    readyMap[myID] = false;
     enterRoom();
 }
 
-// 加入房间（输入6位号）
+// 加入房间（6位码）
 function joinRoom() {
     myNick = document.getElementById("nickInput").value.trim();
     roomCode = document.getElementById("roomInput").value.trim();
-    if(!myNick || roomCode.length !==6) {alert("输入昵称+6位房间号"); return;}
-    
-    let conn = peer.connect(myID); // 临时连接请求房主ID
-    conn.on('open', ()=>{
+    if (!myNick || roomCode.length !== 6) { alert("输入昵称+6位房间号"); return; }
+
+    let hostID = roomMap[roomCode] || roomCode;
+    let conn = peer.connect(hostID);
+    conn.on('open', () => {
+        connections.push(conn);
+        conn.on('data', handleMessage);
         conn.send({
-            type:"reqJoin",
-            roomCode:roomCode,
-            player:{id:myID, nick:myNick, hp:50, atk:8, df:5, en:0, maxEn:5, dead:false, act:null, tar:null}
+            type: "PLAYER_JOIN",
+            player: { id: myID, nick: myNick, hp: 50, atk: 8, df: 5, en: 0, maxEn: 5, dead: false, act: null, tar: null }
         });
     });
 }
@@ -201,36 +191,34 @@ function joinRoom() {
 function enterRoom() {
     document.getElementById("loginPage").style.display = "none";
     document.getElementById("roomPage").style.display = "block";
-    document.getElementById("roomIdText").innerText = roomCode; // 显示6位房间号
-    if(isHost) document.getElementById("startBtn").style.display = "block";
+    document.getElementById("roomIdText").innerText = roomCode;
+    document.getElementById("startBtn").style.display = isHost ? "block" : "none";
     renderRoom();
 }
 
-// 切换准备
+// 切换准备（发给房主，由房主同步）
 function toggleReady() {
-    readyStatus[myID] = !readyStatus[myID];
-    if(isHost) {
-        broadcast({type:"sync", players:playerList, ready:readyStatus});
+    if (isHost) {
+        readyMap[myID] = !readyMap[myID];
+        broadcast({ type: "SYNC_ALL", players: playerData, ready: readyMap });
     } else {
-        connections.forEach(c=>c.send({type:"ready", id:myID, val:readyStatus[myID]}));
+        connections.forEach(c => c.send({ type: "PLAYER_READY", id: myID, val: !readyMap[myID] }));
     }
-    renderRoom();
 }
 
-// 渲染房间
+// 渲染房间（仅读房主数据）
 function renderRoom() {
-    let html = "";
-    playerList.forEach(p=>{
-        let r = readyStatus[p.id] ? "✅ 已准备" : "⌛ 未准备";
-        html += `<div class="player-item"><span>${p.nick}</span><span>${r}</span></div>`;
-    });
-    document.getElementById("playerList").innerHTML = html;
+    document.getElementById("playerList").innerHTML = playerData.map(p => `
+    <div class="player-item">
+        <span>${p.nick}</span>
+        <span>${readyMap[p.id] ? "✅ 已准备" : "⌛ 未准备"}</span>
+    </div>`).join('');
 }
 
-// 开始游戏
+// 开始游戏（房主广播）
 function startGame() {
-    if(!isHost) return;
-    broadcast({type:"start"});
+    if (!isHost) return;
+    broadcast({ type: "GAME_START" });
     enterBattle();
 }
 
@@ -241,13 +229,12 @@ function enterBattle() {
     renderBattle();
 }
 
-// 渲染战斗
+// 渲染战斗（仅读房主数据，无本地修改）
 function renderBattle() {
-    let html = "";
-    playerList.forEach(p=>{
+    document.getElementById("battlePlayers").innerHTML = playerData.map(p => {
         let cls = p.dead ? "dead" : p.act ? "done" : "waiting";
-        let txt = p.dead ? "已阵亡" : p.act ? {a:"攻击",d:"防御",s:"跳过"}[p.act] : "等待";
-        html += `
+        let txt = p.dead ? "已阵亡" : p.act ? { a: "攻击", d: "防御", s: "跳过" }[p.act] : "等待";
+        return `
         <div class="player-item ${cls}">
             <div>
                 <b>${p.nick}</b>
@@ -256,86 +243,74 @@ function renderBattle() {
             </div>
             <span>${txt}</span>
         </div>`;
-    });
-    document.getElementById("battlePlayers").innerHTML = html;
-    
-    // 显示/隐藏操作栏
-    let me = playerList.find(x=>x.id===myID);
+    }).join('');
+
+    let me = playerData.find(x => x.id === myID);
     document.getElementById("actionBar").style.display = (!me.dead && !me.act) ? "flex" : "none";
     document.getElementById("targetBox").style.display = "none";
-    checkWin();
+    checkWinner();
 }
 
 // 选择攻击
 function selectAttack() {
     document.getElementById("actionBar").style.display = "none";
     document.getElementById("targetBox").style.display = "block";
-    let tarHtml = "";
-    playerList.forEach(p=>{
-        if(p.id!==myID && !p.dead) tarHtml += `<button class="btn-block btn-r" onclick="sendAction('a','${p.id}')">${p.nick}</button>`;
-    });
-    document.getElementById("targetList").innerHTML = tarHtml;
+    document.getElementById("targetList").innerHTML = playerData
+        .filter(p => p.id !== myID && !p.dead)
+        .map(p => `<button class="btn-block btn-r" onclick="sendAction('a','${p.id}')">${p.nick}</button>`).join('');
 }
-// 选择防御
-function selectDefend() {sendAction('d',null);}
-// 选择跳过
-function selectSkip() {sendAction('s',null);}
+function selectDefend() { sendAction('d', null); }
+function selectSkip() { sendAction('s', null); }
 
-// 发送动作
+// 发送动作（仅发给房主，不本地修改）
 function sendAction(act, tar) {
-    let me = playerList.find(x=>x.id===myID);
-    me.act = act; me.tar = tar;
-    connections.forEach(c=>c.send({type:"action", id:myID, act:act, tar:tar}));
-    renderBattle();
+    connections.forEach(c => c.send({ type: "ACTION_SUBMIT", id: myID, act, tar }));
 }
 
-// 检查回合结束
-function checkRoundEnd() {
-    if(!isHost) return;
-    let alive = playerList.filter(p=>!p.dead);
-    if(alive.every(p=>p.act)) resolveRound();
+// 房主检查回合结束
+function checkRoundFinish() {
+    if (!isHost) return;
+    let alive = playerData.filter(p => !p.dead);
+    if (alive.every(p => p.act)) resolveRound();
 }
 
-// 结算回合（房主统一计算日志，全员同步）
+// 房主结算回合（生成日志+广播）
 function resolveRound() {
     let damage = {};
-    playerList.forEach(p=>damage[p.id]=0);
-    playerList.forEach(p=>{if(p.act==='a'&&p.tar) damage[p.tar]+=p.atk;});
-    
+    playerData.forEach(p => damage[p.id] = 0);
+    playerData.forEach(p => { if (p.act === 'a' && p.tar) damage[p.tar] += p.atk; });
+
     let log = ["--- 回合结算 ---"];
-    // 记录动作
-    playerList.forEach(p=>{
-        if(p.dead) return;
-        let tar = p.tar ? playerList.find(x=>x.id===p.tar) : null;
-        if(p.act==='a') log.push(`${p.nick} 攻击 ${tar?.nick}`);
-        if(p.act==='d') log.push(`${p.nick} 防御`);
-        if(p.act==='s') {p.en=Math.min(p.en+1,5); log.push(`${p.nick} 跳过，能量+1`);}
+    playerData.forEach(p => {
+        if (p.dead) return;
+        let tar = p.tar ? playerData.find(x => x.id === p.tar) : null;
+        if (p.act === 'a') log.push(`${p.nick} 攻击 ${tar?.nick}`);
+        if (p.act === 'd') log.push(`${p.nick} 防御`);
+        if (p.act === 's') { p.en = Math.min(p.en + 1, 5); log.push(`${p.nick} 跳过，能量+1`); }
     });
-    // 记录伤害
-    playerList.forEach(p=>{
-        if(p.dead) return;
-        let dmg = p.act==='d' ? Math.max(0, damage[p.id]-p.df) : damage[p.id];
+    playerData.forEach(p => {
+        if (p.dead) return;
+        let dmg = p.act === 'd' ? Math.max(0, damage[p.id] - p.df) : damage[p.id];
         p.hp -= dmg;
-        if(dmg>0) log.push(`${p.nick} 受到 ${dmg} 点伤害`);
-        if(p.hp<=0) {p.hp=0; p.dead=true; log.push(`${p.nick} 已阵亡！`);}
+        if (dmg > 0) log.push(`${p.nick} 受到 ${dmg} 点伤害`);
+        if (p.hp <= 0) { p.hp = 0; p.dead = true; log.push(`${p.nick} 已阵亡！`); }
     });
-    
-    // 广播日志+数据，全员完全同步
-    broadcast({type:"roundEnd", players:playerList, log:log.join("<br>")});
+
+    broadcast({ type: "ROUND_END", players: playerData, log: log.join("<br>") });
     renderBattle();
 }
 
 // 检查胜利
-function checkWin() {
-    let alive = playerList.filter(p=>!p.dead);
-    if(alive.length===1) {
-        broadcast({type:"win", winner:alive[0].nick});
-        showWin(alive[0].nick);
+function checkWinner() {
+    let alive = playerData.filter(p => !p.dead);
+    if (alive.length === 1) {
+        broadcast({ type: "GAME_WIN", winner: alive[0].nick });
+        showWinner(alive[0].nick);
     }
 }
 
 // 显示胜利
-function showWin(name) {
+function showWinner(name) {
     document.getElementById("winText").style.display = "block";
     document.getElementById("winText").innerText = `🎉 ${name} 获得胜利！`;
 }
