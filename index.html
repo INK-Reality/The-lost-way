@@ -36,7 +36,7 @@
 <div class="container" id="loginPage">
     <div class="title">晖纹竞技场</div>
     <input id="nickInput" placeholder="输入昵称">
-    <input id="roomInput" placeholder="房间号（加入填写）">
+    <input id="roomInput" placeholder="6位房间号（加入填写）">
     <button class="btn-block btn-y" onclick="createRoom()">创建房间</button>
     <button class="btn-block btn-y" onclick="joinRoom()">加入房间</button>
     <div id="tipText" style="text-align:center; margin-top:10px; color:#f5d042;">等待连接...</div>
@@ -74,6 +74,8 @@ let peer, myID, myNick, roomID, isHost = false;
 let connections = [];
 let playerList = [];
 let readyStatus = {};
+let roomCode = ""; // 6位房间号
+let hostPeerID = ""; // 房主真实PeerID
 
 // 初始化Peer
 function initPeer() {
@@ -99,13 +101,24 @@ function broadcast(msg) {
 // 处理所有消息
 function handleMsg(msg) {
     switch(msg.type) {
-        // 成员加入
-        case "join":
-            if(isHost) {
+        // 成员请求加入（6位房间号验证）
+        case "reqJoin":
+            if(isHost && msg.roomCode === roomCode) {
+                conn.send({type:"hostID", hostID:myID});
                 playerList.push(msg.player);
                 readyStatus[msg.player.id] = false;
                 broadcast({type:"sync", players:playerList, ready:readyStatus});
             }
+            break;
+        // 房主返回真实ID
+        case "hostID":
+            hostPeerID = msg.hostID;
+            let conn = peer.connect(hostPeerID);
+            conn.on('open', ()=>{
+                connections.push(conn);
+                conn.on('data', handleMsg);
+                enterRoom();
+            });
             break;
         // 同步房间数据
         case "sync":
@@ -137,7 +150,7 @@ function handleMsg(msg) {
             playerList = msg.players;
             renderBattle();
             break;
-        // 回合结算
+        // 回合结算（日志全员同步）
         case "roundEnd":
             playerList = msg.players;
             document.getElementById("battleLog").innerHTML = msg.log + "<br><br>" + document.getElementById("battleLog").innerHTML;
@@ -156,33 +169,31 @@ function handleMsg(msg) {
     }
 }
 
-// 创建房间
+// 创建房间（6位数字房间号）
 function createRoom() {
     myNick = document.getElementById("nickInput").value.trim();
     if(!myNick) {alert("请输入昵称"); return;}
     isHost = true;
-    roomID = myID;
+    roomCode = Math.floor(100000 + Math.random() * 900000).toString(); // 6位随机数
+    roomID = roomCode;
     playerList.push({id:myID, nick:myNick, hp:50, atk:8, df:5, en:0, maxEn:5, dead:false, act:null, tar:null});
     readyStatus[myID] = false;
     enterRoom();
 }
 
-// 加入房间
+// 加入房间（输入6位号）
 function joinRoom() {
     myNick = document.getElementById("nickInput").value.trim();
-    roomID = document.getElementById("roomInput").value.trim();
-    if(!myNick || !roomID) {alert("输入昵称+房间号"); return;}
+    roomCode = document.getElementById("roomInput").value.trim();
+    if(!myNick || roomCode.length !==6) {alert("输入昵称+6位房间号"); return;}
     
-    let conn = peer.connect(roomID);
+    let conn = peer.connect(myID); // 临时连接请求房主ID
     conn.on('open', ()=>{
-        connections.push(conn);
-        conn.on('data', handleMsg);
-        // 发送加入信息
         conn.send({
-            type:"join",
+            type:"reqJoin",
+            roomCode:roomCode,
             player:{id:myID, nick:myNick, hp:50, atk:8, df:5, en:0, maxEn:5, dead:false, act:null, tar:null}
         });
-        enterRoom();
     });
 }
 
@@ -190,7 +201,7 @@ function joinRoom() {
 function enterRoom() {
     document.getElementById("loginPage").style.display = "none";
     document.getElementById("roomPage").style.display = "block";
-    document.getElementById("roomIdText").innerText = roomID;
+    document.getElementById("roomIdText").innerText = roomCode; // 显示6位房间号
     if(isHost) document.getElementById("startBtn").style.display = "block";
     renderRoom();
 }
@@ -285,7 +296,7 @@ function checkRoundEnd() {
     if(alive.every(p=>p.act)) resolveRound();
 }
 
-// 结算回合（房主计算）
+// 结算回合（房主统一计算日志，全员同步）
 function resolveRound() {
     let damage = {};
     playerList.forEach(p=>damage[p.id]=0);
@@ -309,6 +320,7 @@ function resolveRound() {
         if(p.hp<=0) {p.hp=0; p.dead=true; log.push(`${p.nick} 已阵亡！`);}
     });
     
+    // 广播日志+数据，全员完全同步
     broadcast({type:"roundEnd", players:playerList, log:log.join("<br>")});
     renderBattle();
 }
