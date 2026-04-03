@@ -1,165 +1,200 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>文字PVP在线对战</title>
-<style>
-*{box-sizing:border-box;font-family:system-ui, sans-serif;}
-body{background:#111;color:#fff;margin:0;padding:20px;max-width:700px;margin:0 auto;}
-.panel{background:#1d1d1d;padding:16px;border-radius:10px;margin-bottom:12px;}
-.hp-bar{height:24px;background:#333;border-radius:6px;overflow:hidden;margin:8px 0;}
-.hp{height:100%;background:#e53935;transition:width 0.3s;}
-.mana{height:100%;background:#1e88e5;transition:width 0.3s;}
-.btn{padding:10px 16px;margin:4px;border:none;border-radius:6px;color:#fff;font-weight:bold;cursor:pointer;}
-.btn-atk{background:#d32f2f;}
-.btn-skill{background:#f57c00;}
-.btn-def{background:#388e3c;}
-.log{height:180px;overflow-y:auto;background:#161616;padding:10px;border-radius:8px;font-size:14px;line-height:1.5;}
-.room{display:flex;gap:8px;margin-bottom:12px;}
-.room input{flex:1;padding:10px;border-radius:6px;border:none;background:#222;color:#fff;}
-.status{color:#aaa;font-size:14px;}
-.win{color:#ffc107;font-size:18px;font-weight:bold;margin:10px 0;}
-</style>
+    <meta charset="UTF-8">
+    <title>晖纹竞技场 - 弃路余晖</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        body {
+            background: #10141c;
+            color: #e6e6e6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 700px;
+            background: #1b2230;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 0 30px #000;
+            border: 1px solid #3a455a;
+        }
+
+        .title {
+            text-align: center;
+            font-size: 28px;
+            color: #f1c40f;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #f1c40f55;
+        }
+
+        .input-group {
+            margin: 12px 0;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px;
+            border-radius: 8px;
+            border: none;
+            background: #252d3a;
+            color: white;
+            font-size: 16px;
+            outline: none;
+            border: 1px solid #444;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            border-radius: 8px;
+            border: none;
+            background: #d4af37;
+            color: #111;
+            font-weight: bold;
+            font-size: 16px;
+            margin: 8px 0;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background: #ffcc33;
+        }
+
+        .room {
+            background: #222b38;
+            padding: 16px;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+
+        .player {
+            padding: 10px;
+            background: #2a3447;
+            margin: 6px 0;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .ready {
+            color: #2ecc71;
+            font-weight: bold;
+        }
+
+        .battle-ui {
+            display: none;
+        }
+
+        .status {
+            text-align: center;
+            color: #ffcc33;
+            margin: 10px 0;
+        }
+    </style>
 </head>
 <body>
+    <div class="container" id="loginPage">
+        <div class="title">晖纹竞技场</div>
+        <div class="input-group">
+            <input type="text" id="nickname" placeholder="输入你的游戏昵称">
+        </div>
+        <div class="input-group">
+            <input type="text" id="roomId" placeholder="输入房间号（创建房间可不填）">
+        </div>
+        <button onclick="createRoom()">创建房间（4人）</button>
+        <button onclick="joinRoom()">加入房间</button>
+        <div class="status" id="tip"></div>
+    </div>
 
-<h2 style="text-align:center;">文字PVP在线对战</h2>
+    <div class="container" id="roomPage" style="display:none;">
+        <div class="title">房间：<span id="showRoomId"></span></div>
+        <div id="playerList"></div>
+        <button id="readyBtn" onclick="ready()">准备 / 取消准备</button>
+        <button id="startBtn" onclick="startBattle()" style="display:none;">开始游戏（房主）</button>
+    </div>
 
-<div class="panel">
-  <div class="room">
-    <input type="text" id="nick" placeholder="你的昵称" value="玩家1">
-    <input type="text" id="roomId" placeholder="房间号" value="1001">
-    <button class="btn" style="background:#3949ab" onclick="joinRoom()">加入房间</button>
-  </div>
-  <div id="status" class="status">未连接</div>
-</div>
+    <div class="container battle-ui" id="battlePage">
+        <div class="title">战斗中</div>
+        <div id="battlePlayers"></div>
+    </div>
 
-<div class="panel">
-  <h3>我方 <span id="meName">玩家1</span></h3>
-  <div class="hp-bar"><div id="meHp" class="hp" style="width:100%"></div></div>
-  <div>HP: <span id="meHpText">100</span></div>
-  <div class="hp-bar" style="margin-top:10px;"><div id="meMana" class="mana" style="width:100%"></div></div>
-  <div>MP: <span id="meManaText">50</span></div>
-</div>
+    <script>
+        let playerName = "";
+        let roomId = "";
+        let isHost = false;
+        let players = [];
+        let readyList = {};
 
-<div class="panel">
-  <h3>敌方 <span id="enName">?</span></h3>
-  <div class="hp-bar"><div id="enHp" class="hp" style="width:100%"></div></div>
-  <div>HP: <span id="enHpText">100</span></div>
-</div>
+        // 模拟联机（可替换为真实后端）
+        function createRoom() {
+            playerName = document.getElementById("nickname").value;
+            if (!playerName) { alert("请输入昵称"); return; }
+            roomId = Math.floor(Math.random()*9000)+1000;
+            isHost = true;
+            enterRoom();
+        }
 
-<div style="display:flex;justify-content:center;gap:8px;margin:16px 0;">
-  <button class="btn btn-atk" onclick="attack()">普攻</button>
-  <button class="btn btn-skill" onclick="skill()">技能</button>
-  <button class="btn btn-def" onclick="defend()">防御</button>
-</div>
+        function joinRoom() {
+            playerName = document.getElementById("nickname").value;
+            roomId = document.getElementById("roomId").value;
+            if (!playerName || !roomId) { alert("请输入昵称和房间号"); return; }
+            enterRoom();
+        }
 
-<div class="log" id="log"></div>
-<div id="result" style="text-align:center;"></div>
+        function enterRoom() {
+            document.getElementById("loginPage").style.display = "none";
+            document.getElementById("roomPage").style.display = "block";
+            document.getElementById("showRoomId").innerText = roomId;
+            addPlayer(playerName);
+            updatePlayerList();
+        }
 
-<script src="https://cdn.jsdelivr.net/npm/peerjs@1.4.7/dist/peerjs.min.js"></script>
-<script>
-let me = { hp:100, maxHp:100, mana:50, maxMana:50, def:false, name:"玩家1" };
-let enemy = { hp:100, maxHp:100, name:"?" };
-let peer, conn;
-const logBox = document.getElementById("log");
+        function addPlayer(name) {
+            if (!players.includes(name)) players.push(name);
+        }
 
-function $(id){ return document.getElementById(id); }
+        function updatePlayerList() {
+            let html = "";
+            players.forEach(p => {
+                let r = readyList[p] ? "✅ 已准备" : "⌛ 未准备";
+                html += `<div class="player"><span>${p}</span><span class='ready'>${r}</span></div>`;
+            });
+            document.getElementById("playerList").innerHTML = html;
+            if (isHost) document.getElementById("startBtn").style.display = "block";
+        }
 
-function joinRoom(){
-  me.name = $("nick").value || "玩家";
-  $("meName").innerText = me.name;
-  const room = $("roomId").value;
-  $("status").innerText = "连接中...";
-  
-  peer = new Peer(me.name+Date.now().toString(16));
-  peer.on("open",()=>{
-    conn = peer.connect(room);
-    conn.on("open",()=>{ $("status").innerText = "✅ 联机成功"; sendInfo(); });
-    conn.on("data", onData);
-  });
-}
+        function ready() {
+            readyList[playerName] = !readyList[playerName];
+            updatePlayerList();
+        }
 
-function send(msg){ conn && conn.send(msg); }
+        function startBattle() {
+            document.getElementById("roomPage").style.display = "none";
+            document.getElementById("battlePage").style.display = "block";
+            showBattle();
+        }
 
-function sendInfo(){ send({t:"info", name:me.name}); }
-
-function addLog(text){
-  logBox.innerHTML += `<div>• ${text}</div>`;
-  logBox.scrollTop = logBox.scrollHeight;
-}
-
-function updateUI(){
-  $("meHp").style.width = (me.hp/me.maxHp*100)+"%";
-  $("meHpText").innerText = me.hp;
-  $("meMana").style.width = (me.mana/me.maxMana*100)+"%";
-  $("meManaText").innerText = me.mana;
-  $("enHp").style.width = (enemy.hp/enemy.maxHp*100)+"%";
-  $("enHpText").innerText = enemy.hp;
-}
-
-function checkGameOver(){
-  const r = $("result");
-  if(me.hp <=0){ r.innerHTML = "<div class='win'>❌ 你输了</div>"; disableBtn(); }
-  if(enemy.hp <=0){ r.innerHTML = "<div class='win'>✅ 你赢了</div>"; disableBtn(); }
-}
-
-function disableBtn(){ document.querySelectorAll(".btn").forEach(b=>b.disabled=true); }
-
-// 动作
-function attack(){
-  const dmg = me.def ? 5 : 12;
-  enemy.hp -= dmg;
-  enemy.hp = Math.max(0, enemy.hp);
-  addLog(`你对${enemy.name}造成${dmg}点伤害`);
-  send({t:"atk", dmg});
-  me.def = false; updateUI(); checkGameOver();
-}
-
-function skill(){
-  if(me.mana <20){ addLog("MP不足"); return; }
-  me.mana -=20;
-  const dmg = me.def ? 8 : 25;
-  enemy.hp -= dmg; enemy.hp = Math.max(0,enemy.hp);
-  addLog(`你使用技能，造成${dmg}点伤害`);
-  send({t:"skill", dmg});
-  me.def = false; updateUI(); checkGameOver();
-}
-
-function defend(){
-  me.def = true;
-  addLog("你进入防御");
-  send({t:"def"});
-  updateUI();
-}
-
-// 接收
-function onData(data){
-  if(data.t === "info"){
-    enemy.name = data.name;
-    $("enName").innerText = enemy.name;
-    addLog(`${enemy.name} 加入战斗`);
-  }
-  if(data.t === "atk"){
-    const dmg = me.def ? 5 : data.dmg||12;
-    me.hp -= dmg; me.hp = Math.max(0,me.hp);
-    addLog(`${enemy.name}对你造成${dmg}伤害`);
-    me.def = false; updateUI(); checkGameOver();
-  }
-  if(data.t === "skill"){
-    const dmg = me.def ? 8 : data.dmg||25;
-    me.hp -= dmg; me.hp = Math.max(0,me.hp);
-    addLog(`${enemy.name}使用技能，造成${dmg}伤害`);
-    me.def = false; updateUI(); checkGameOver();
-  }
-  if(data.t === "def"){
-    addLog(`${enemy.name}进入防御`);
-    updateUI();
-  }
-}
-
-updateUI();
-</script>
+        function showBattle() {
+            let html = "";
+            players.forEach(p => {
+                html += `<div class='player'>${p} | 血量：80 | 攻击：5 | 防御：5</div>`;
+            });
+            document.getElementById("battlePlayers").innerHTML = html;
+        }
+    </script>
 </body>
 </html>
